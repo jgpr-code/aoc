@@ -1,17 +1,32 @@
-use clap::Parser;
-use std::collections::HashMap;
+use anyhow::Result;
+use common::Answer;
+use std::{collections::HashMap, fs, path::PathBuf};
+use structopt::StructOpt;
 
+mod common;
 mod day01;
 mod day02;
 
-#[derive(Debug, Parser)]
-struct Cli {
-    day: Option<u8>,
-    part: Option<u8>,
+#[derive(Debug, StructOpt)]
+enum Opt {
+    All,
+    Day { day: u8, part: Option<u8> },
+    File { day: u8, part: u8, file: PathBuf },
+    // Stdin { day: u8, part: u8 },
+}
+
+fn main() {
+    let opt = Opt::from_args();
+    println!("{:?}", opt);
+
+    let mut solver = Solver::new();
+    solver.add(1, 1, day01::part_one);
+    solver.add(1, 2, day01::part_two);
+    solver.solve(opt);
 }
 
 struct Solver {
-    solutions: HashMap<(u8, u8), fn()>,
+    solutions: HashMap<(u8, u8), fn(&str) -> Result<Answer>>,
 }
 
 impl Solver {
@@ -20,51 +35,50 @@ impl Solver {
             solutions: HashMap::new(),
         }
     }
-    fn add(&mut self, day: u8, part: u8, fun: fn()) {
+    fn add(&mut self, day: u8, part: u8, fun: fn(&str) -> Result<Answer>) {
         self.solutions.insert((day, part), fun);
     }
-    fn solve(&self, day: &Option<u8>, part: &Option<u8>) {}
-    fn solve_day_part(&self, day: u8, part: u8) {}
-    fn solve_day(&self, day: u8) {}
-    fn solve_part(&self, part: u8) {}
-    fn solve_all(&self) {}
-}
-
-fn main() {
-    let cli = Cli::parse();
-
-    let mut solver = Solver::new();
-    solver.add(1, 1, day01::say_hello);
-    run(&cli.day, &cli.part);
-    println!("Hello, world!");
-    day01::say_hello();
-    //day01::say_goodbye(); not possible -> private function
-    day02::say_hello();
-}
-
-fn run(day: &Option<u8>, part: &Option<u8>) {
-    // no day, no part -> run all
-    // no day, part -> run that part for all days
-    // day, no part -> run parts for that day
-    // day, part -> run that part for that day
-    match (day, part) {
-        (Some(day), Some(part)) => println!("day {} part {} is not implemented yet", day, part),
-        (None, None) => todo!(),
-        (None, Some(_)) => todo!(),
-        (Some(_), None) => todo!(),
+    fn solve(&self, opt: Opt) {
+        match opt {
+            Opt::All => self.solve_all(),
+            Opt::Day { day, part } => self.solve_day(day, part),
+            Opt::File { day, part, file } => self.solve_day_part_file(day, part, file),
+        }
+    }
+    fn solve_all(&self) {
+        for i in 1..=25 {
+            self.solve_day(i, None);
+        }
+    }
+    fn solve_day(&self, day: u8, part: Option<u8>) {
+        let file = format!("src/day{:02}/input.txt", day);
+        match fs::read_to_string(&file) {
+            Ok(content) => {
+                if let Some(part) = part {
+                    self.solve_day_part_content(day, part, &content)
+                } else {
+                    self.solve_day_part_content(day, 1, &content);
+                    self.solve_day_part_content(day, 2, &content);
+                }
+            }
+            Err(err) => println!("Error reading {}: {}", file, err),
+        }
+    }
+    fn solve_day_part_file(&self, day: u8, part: u8, file: PathBuf) {
+        match fs::read_to_string(&file) {
+            Ok(content) => self.solve_day_part_content(day, part, &content),
+            Err(err) => println!("Error reading {}: {}", file.display(), err),
+        }
+    }
+    fn solve_day_part_content(&self, day: u8, part: u8, content: &str) {
+        print!("day{:02} part{:02}: ", day, part);
+        if let Some(fun) = self.solutions.get(&(day, part)) {
+            match fun(content) {
+                Ok(answer) => println!("{}", answer),
+                Err(err) => println!("Err: implementation failed with: {}", err),
+            }
+        } else {
+            println!("Err: No solution was added to solver!");
+        }
     }
 }
-
-// use cases
-
-// cargo run r 1 1 -> 'r' for run '1' for day01 '1' for part1
-
-// run/test day part 1
-// run/test day part 2
-// run/test day
-// time day part 1
-// time day part 2
-// time day
-
-// run all days
-// time all days
