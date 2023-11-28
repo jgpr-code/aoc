@@ -41,6 +41,7 @@ mod tests {
     use super::*;
     use lazy_static::lazy_static;
 
+    // in theory std::sync::LazyLock would be best, but its not in stable yet
     lazy_static! {
         static ref TEST: String = read_from_file("src/day00/test.txt");
         static ref INPUT: String = read_from_file("src/day00/input.txt");
