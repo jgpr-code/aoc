@@ -1,5 +1,6 @@
 mod common;
 mod day00;
+mod day01;
 
 use anyhow::Result;
 use common::Answer;
@@ -15,11 +16,12 @@ enum Opt {
 
 fn main() {
     let opt = Opt::from_args();
-    println!("{:?}", opt);
 
     let mut solver = Solver::new();
     solver.add(0, 1, day00::part_one);
     solver.add(0, 2, day00::part_two);
+    solver.add(1, 1, day01::part_one);
+    solver.add(1, 2, day01::part_two);
     solver.solve(opt);
 }
 
