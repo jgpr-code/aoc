@@ -40,6 +40,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
 mod tests {
     use super::*;
     use lazy_static::lazy_static;
+    use test::Bencher;
 
     // in theory std::sync::LazyLock would be best, but its not in stable yet
     lazy_static! {
@@ -70,5 +71,14 @@ mod tests {
         let answer = super::part_two(&INPUT)?;
         assert_eq!(answer, Answer::Num(55));
         Ok(())
+    }
+
+    #[bench]
+    fn bench_part_one(b: &mut Bencher) {
+        b.iter(|| part_one())
+    }
+    #[bench]
+    fn bench_part_two(b: &mut Bencher) {
+        b.iter(|| part_two())
     }
 }
