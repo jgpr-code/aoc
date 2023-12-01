@@ -39,14 +39,13 @@ fn solve_two(input: &Input) -> Result<Answer> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lazy_static::lazy_static;
+    use std::sync::LazyLock;
     use test::Bencher;
 
-    // in theory std::sync::LazyLock would be best, but its not in stable yet
-    lazy_static! {
-        static ref TEST: String = test_utils::read_from_file("src/day00/test.txt");
-        static ref INPUT: String = test_utils::read_from_file("src/day00/input.txt");
-    }
+    static TEST: LazyLock<String> =
+        LazyLock::new(|| test_utils::read_from_file("src/day00/test.txt"));
+    static INPUT: LazyLock<String> =
+        LazyLock::new(|| test_utils::read_from_file("src/day00/input.txt"));
 
     #[test]
     fn test_one() -> Result<()> {

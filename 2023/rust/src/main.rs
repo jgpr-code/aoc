@@ -1,4 +1,5 @@
 #![feature(test)]
+#![feature(lazy_cell)]
 extern crate test;
 
 mod common;

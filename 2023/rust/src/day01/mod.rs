@@ -84,15 +84,15 @@ fn solve_two(input: &Input) -> Result<Answer> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lazy_static::lazy_static;
+    use std::sync::LazyLock;
     use test::Bencher;
 
-    // in theory std::sync::LazyLock would be best, but its not in stable yet
-    lazy_static! {
-        static ref TEST: String = test_utils::read_from_file("src/day01/test.txt");
-        static ref TEST2: String = test_utils::read_from_file("src/day01/test2.txt");
-        static ref INPUT: String = test_utils::read_from_file("src/day01/input.txt");
-    }
+    static TEST: LazyLock<String> =
+        LazyLock::new(|| test_utils::read_from_file("src/day01/test.txt"));
+    static TEST2: LazyLock<String> =
+        LazyLock::new(|| test_utils::read_from_file("src/day01/test2.txt"));
+    static INPUT: LazyLock<String> =
+        LazyLock::new(|| test_utils::read_from_file("src/day01/input.txt"));
 
     #[test]
     fn test_one() -> Result<()> {
