@@ -5,6 +5,7 @@ extern crate test;
 mod common;
 mod day00;
 mod day01;
+mod day02;
 
 use common::*;
 use std::path::PathBuf;
@@ -25,5 +26,7 @@ fn main() {
     solver.add(0, 2, day00::part_two);
     solver.add(1, 1, day01::part_one);
     solver.add(1, 2, day01::part_two);
+    solver.add(2, 1, day02::part_one);
+    solver.add(2, 2, day02::part_two);
     solver.solve(opt);
 }
