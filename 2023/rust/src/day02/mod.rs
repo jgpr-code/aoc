@@ -1,5 +1,5 @@
 use super::common::*;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -77,9 +77,8 @@ fn parse_game(line: &str) -> Result<Game> {
     let id = v[0]
         .split(" ")
         .nth(1)
-        .expect("nth(1) to get id is legit")
-        .parse::<i128>()
-        .expect("game id is legit");
+        .ok_or(anyhow!("nth(1) was None"))?
+        .parse::<i128>()?;
     let sets = v[1];
     let s: Vec<&str> = sets.split(";").map(|s| s.trim()).collect();
     let sets: Vec<GameSet> = s
