@@ -1,10 +1,6 @@
 use super::common::*;
 use anyhow::Result;
-use regex::Regex;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::OnceLock,
-};
+use std::collections::{HashMap, HashSet};
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -133,8 +129,7 @@ fn parse_input(input: &str) -> Result<Input> {
     //     .collect::<Vec<_>>();
     let lines: Vec<String> = input.lines().map(|s| String::from(s)).collect();
 
-    static RE: OnceLock<regex::Regex> = OnceLock::new();
-    let number_regex = RE.get_or_init(|| Regex::new(r"\d+").unwrap());
+    let number_regex = regex!(r"\d+");
 
     let mut numbers = Vec::new(); // TODO with_capacity?
     let mut gears = Vec::new();
@@ -180,10 +175,8 @@ mod tests {
     use std::sync::LazyLock;
     use test::Bencher;
 
-    static TEST: LazyLock<String> =
-        LazyLock::new(|| test_utils::read_from_file("src/day03/test.txt"));
-    static INPUT: LazyLock<String> =
-        LazyLock::new(|| test_utils::read_from_file("src/day03/input.txt"));
+    static TEST: LazyLock<String> = local_file!("test.txt");
+    static INPUT: LazyLock<String> = local_file!("input.txt");
 
     #[test]
     fn test_one() -> Result<()> {

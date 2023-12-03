@@ -1,3 +1,5 @@
+#![macro_use]
+
 use anyhow::Result;
 use std::fmt::Display;
 use std::{collections::HashMap, fs, path::PathBuf};
@@ -77,12 +79,40 @@ impl Solver {
     }
 }
 
+macro_rules! regex {
+    ($re:literal) => {{
+        static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+            // println!("initializing regex {}", $re);
+            regex::Regex::new($re).unwrap()
+        });
+        &RE
+    }};
+}
+
 #[cfg(test)]
+#[macro_use]
 pub mod test_utils {
     use std::fs;
     pub fn read_from_file(filename: &str) -> String {
         println!("reading {}", filename);
         fs::read_to_string(filename)
             .unwrap_or_else(|msg| panic!("error reading {}: {}", filename, msg))
+    }
+    macro_rules! extract_day_from_path {
+        () => {{
+            let path = module_path!();
+            let re = regex!(r"day\d{2}");
+            let m = re
+                .find(path)
+                .expect("macro is only valid inside paths containing 'day\\d{2}' pattern");
+            m.as_str()
+        }};
+    }
+    macro_rules! local_file {
+        ($file:literal) => {
+            LazyLock::new(|| {
+                test_utils::read_from_file(&format!("src/{}/{}", extract_day_from_path!(), $file))
+            })
+        };
     }
 }

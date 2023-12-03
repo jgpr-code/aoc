@@ -42,10 +42,8 @@ mod tests {
     use std::sync::LazyLock;
     use test::Bencher;
 
-    static TEST: LazyLock<String> =
-        LazyLock::new(|| test_utils::read_from_file("src/day00/test.txt"));
-    static INPUT: LazyLock<String> =
-        LazyLock::new(|| test_utils::read_from_file("src/day00/input.txt"));
+    static TEST: LazyLock<String> = local_file!("test.txt");
+    static INPUT: LazyLock<String> = local_file!("input.txt");
 
     #[test]
     fn test_one() -> Result<()> {
