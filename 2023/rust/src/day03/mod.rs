@@ -1,8 +1,10 @@
 use super::common::*;
 use anyhow::Result;
 use regex::Regex;
-use std::num::ParseIntError;
-use std::sync::OnceLock;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::OnceLock,
+};
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -18,6 +20,7 @@ pub fn part_two(input: &str) -> Result<Answer> {
 struct Input {
     lines: Vec<String>,
     numbers: Vec<Vec<Number>>,
+    gears: Vec<(usize, usize)>,
 }
 
 #[derive(Debug)]
@@ -53,7 +56,7 @@ impl Input {
                         }
                         let c = grid[cy as usize][cx as usize];
                         if c != '.' && !c.is_ascii_digit() {
-                            println!("{:?}", num.val);
+                            // println!("{:?}", num.val);
                             sum += num.val;
                             break 'number_loop;
                         }
@@ -62,6 +65,64 @@ impl Input {
             }
         }
         sum
+    }
+
+    fn compute_gears(&self) -> i128 {
+        let mut gear_map: HashMap<(usize, usize), Vec<i128>> = HashMap::new();
+        for gear in self.gears.iter() {
+            gear_map.insert(*gear, Vec::new());
+        }
+        let grid = self
+            .lines
+            .iter()
+            .map(|l| l.chars().collect())
+            .collect::<Vec<Vec<_>>>();
+        let dx = vec![-1, 0, 1, -1, 1, -1, 0, 1];
+        let dy = vec![-1, -1, -1, 0, 0, 1, 1, 1];
+
+        for (y, numbers) in self.numbers.iter().enumerate() {
+            for num in numbers {
+                let mut added_to: HashSet<(usize, usize)> = HashSet::new();
+                for x in num.start..num.end {
+                    for i in 0..8 {
+                        let cx = x as i128 + dx[i];
+                        let cy = y as i128 + dy[i];
+                        if cx < 0
+                            || cy < 0
+                            || cx >= grid[0].len() as i128
+                            || cy >= grid.len() as i128
+                        {
+                            continue;
+                        }
+                        let uy = cy as usize;
+                        let ux = cx as usize;
+                        let c = grid[uy][ux];
+                        let key = (uy, ux);
+                        if c == '*' && !added_to.contains(&key) {
+                            // println!("{:?}", num.val);
+                            let a = gear_map.get_mut(&key).unwrap();
+                            a.push(num.val);
+                            added_to.insert(key);
+                        }
+                    }
+                }
+            }
+        }
+        gear_map
+            .iter()
+            .map(|(_, nums)| {
+                // assert_eq!(nums.len(), 2);
+                if nums.len() != 2 {
+                    0
+                } else {
+                    let mut prod = 1;
+                    for n in nums.iter() {
+                        prod *= n;
+                    }
+                    prod
+                }
+            })
+            .sum()
     }
 }
 
@@ -72,11 +133,12 @@ fn parse_input(input: &str) -> Result<Input> {
     //     .collect::<Vec<_>>();
     let lines: Vec<String> = input.lines().map(|s| String::from(s)).collect();
 
-    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let number_regex = RE.get_or_init(|| regex::Regex::new(r"\d+").unwrap());
+    static RE: OnceLock<regex::Regex> = OnceLock::new();
+    let number_regex = RE.get_or_init(|| Regex::new(r"\d+").unwrap());
 
     let mut numbers = Vec::new(); // TODO with_capacity?
-    for line in lines.iter() {
+    let mut gears = Vec::new();
+    for (line_number, line) in lines.iter().enumerate() {
         let numbers_in_line: Vec<Number> = number_regex
             .find_iter(line)
             .map(|m| Number {
@@ -89,18 +151,27 @@ fn parse_input(input: &str) -> Result<Input> {
             })
             .collect();
         numbers.push(numbers_in_line);
+        let mut g: Vec<(usize, usize)> = line
+            .match_indices("*")
+            .map(|(a, _)| (line_number, a))
+            .collect();
+        gears.append(&mut g);
     }
 
-    Ok(Input { lines, numbers })
+    Ok(Input {
+        lines,
+        numbers,
+        gears,
+    })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    println!("{:?}", input);
+    //println!("{:?}", input);
     Ok(Answer::Num(input.sum_adjacent()))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    Ok(Answer::Num(input.sum_adjacent()))
+    Ok(Answer::Num(input.compute_gears()))
 }
 
 #[cfg(test)]
@@ -123,19 +194,19 @@ mod tests {
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(557705));
         Ok(())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(467835));
         Ok(())
     }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(84266818));
         Ok(())
     }
 
