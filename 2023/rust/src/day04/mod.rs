@@ -17,7 +17,7 @@ struct Input {
 }
 struct Card {
     id: usize,
-    _winners: Vec<usize>,
+    _winners: HashSet<usize>,
     _numbers: Vec<usize>,
     matching: usize,
 }
@@ -27,27 +27,21 @@ fn parse_input(input: &str) -> Result<Input> {
     let mut cards = Vec::new();
     for line in lines {
         let (card, rest) = line.split_once(":").unwrap();
-        let card = card.trim();
-        let rest = rest.trim();
-        let a = card.split(" ").filter(|s| s.len() > 0).collect::<Vec<_>>();
-        let id = a[1].parse::<usize>().unwrap();
-        let (winners, numbers) = rest.split_once("|").unwrap();
-        let winners = winners.trim();
-        let numbers = numbers.trim();
+        let id = card.split_whitespace().collect::<Vec<_>>()[1]
+            .parse::<usize>()
+            .unwrap();
+        let (winners, numbers) = rest.trim().split_once("|").unwrap();
         let winners = winners
-            .split(" ")
-            .filter(|s| s.len() > 0)
+            .split_whitespace()
             .map(|s| s.parse::<usize>().unwrap())
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
         let numbers = numbers
-            .split(" ")
-            .filter(|s| s.len() > 0)
+            .split_whitespace()
             .map(|s| s.parse::<usize>().unwrap())
             .collect::<Vec<_>>();
         let mut matching = 0;
-        let winning_set: HashSet<&usize> = HashSet::from_iter(winners.iter());
         for num in numbers.iter() {
-            if winning_set.contains(&num) {
+            if winners.contains(&num) {
                 matching += 1;
             }
         }
@@ -76,9 +70,10 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { cards } = input;
-    let mut mapper: Vec<Vec<usize>> = Vec::new();
+    let n_cards = cards.len();
+    let mut mapper: Vec<Vec<usize>> = Vec::with_capacity(n_cards + 1);
     mapper.push(Vec::new()); // 1 indexed
-    let mut queue = VecDeque::new();
+    let mut queue = VecDeque::with_capacity(n_cards + 1);
     for card in cards {
         let mut winning: Vec<usize> = Vec::new();
         for offset in 1..=card.matching {
@@ -87,7 +82,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
         mapper.push(winning);
         queue.push_back(card.id);
     }
-    let mut counts = vec![0; queue.len() + 1];
+    let mut counts = vec![0; n_cards + 1];
 
     while let Some(id) = queue.pop_front() {
         counts[id] += 1;
