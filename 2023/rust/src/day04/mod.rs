@@ -1,6 +1,6 @@
 use super::common::*;
 use anyhow::Result;
-use std::{collections::HashSet, num::ParseIntError};
+use std::collections::{HashSet, VecDeque};
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -17,8 +17,9 @@ struct Input {
 }
 struct Card {
     id: usize,
-    winners: Vec<usize>,
-    numbers: Vec<usize>,
+    _winners: Vec<usize>,
+    _numbers: Vec<usize>,
+    matching: usize,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
@@ -43,10 +44,18 @@ fn parse_input(input: &str) -> Result<Input> {
             .filter(|s| s.len() > 0)
             .map(|s| s.parse::<usize>().unwrap())
             .collect::<Vec<_>>();
+        let mut matching = 0;
+        let winning_set: HashSet<&usize> = HashSet::from_iter(winners.iter());
+        for num in numbers.iter() {
+            if winning_set.contains(&num) {
+                matching += 1;
+            }
+        }
         cards.push(Card {
             id,
-            winners,
-            numbers,
+            _winners: winners,
+            _numbers: numbers,
+            matching,
         });
     }
     Ok(Input { cards })
@@ -56,15 +65,8 @@ fn solve_one(input: &Input) -> Result<Answer> {
     let Input { cards } = input;
     let mut total = 0;
     for card in cards {
-        let mut winner_count = 0;
-        let winning_set: HashSet<&usize> = HashSet::from_iter(card.winners.iter());
-        for num in card.numbers.iter() {
-            if winning_set.contains(&num) {
-                winner_count += 1;
-            }
-        }
-        if winner_count > 0 {
-            let card_worth = 2_i32.pow(winner_count - 1);
+        if card.matching > 0 {
+            let card_worth = 2_i32.pow(card.matching as u32 - 1);
             println!("{}", card_worth);
             total += card_worth
         }
@@ -74,20 +76,27 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { cards } = input;
-    let mut total = 0;
+    let mut mapper: Vec<Vec<usize>> = Vec::new();
+    mapper.push(Vec::new()); // 1 indexed
+    let mut queue = VecDeque::new();
     for card in cards {
-        let mut winner_count = 0;
-        let winning_set: HashSet<&usize> = HashSet::from_iter(card.winners.iter());
-        for num in card.numbers.iter() {
-            if winning_set.contains(&num) {
-                winner_count += 1;
-            }
+        let mut winning: Vec<usize> = Vec::new();
+        for offset in 1..=card.matching {
+            winning.push(card.id + offset);
         }
-        if winner_count > 0 {
-            total += 2_i32.pow(winner_count - 1);
+        mapper.push(winning);
+        queue.push_back(card.id);
+    }
+    let mut counts = vec![0; queue.len() + 1];
+
+    while let Some(id) = queue.pop_front() {
+        counts[id] += 1;
+        for next in mapper[id].iter() {
+            queue.push_back(*next);
         }
     }
-    Ok(Answer::Num(total as i128))
+    let total = counts.iter().sum();
+    Ok(Answer::Num(total))
 }
 
 #[cfg(test)]
@@ -102,7 +111,7 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(8));
+        assert_eq!(answer, Answer::Num(13));
         Ok(())
     }
     #[test]
@@ -120,7 +129,7 @@ mod tests {
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(55));
+        assert_eq!(answer, Answer::Num(5920640));
         Ok(())
     }
 
