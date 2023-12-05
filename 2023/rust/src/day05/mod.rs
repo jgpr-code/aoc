@@ -1,3 +1,5 @@
+use std::collections::{HashSet, VecDeque};
+
 use super::common::*;
 use anyhow::Result;
 
@@ -24,18 +26,64 @@ impl Input {
     fn map_to_loc(&self, seed_range: (usize, usize), two: bool) -> usize {
         let mut current_range = seed_range;
         let mut last_range = current_range;
-        print!("{:?}->", current_range);
+        // print!("{:?}->", current_range);
         for mapping in self.mappings.iter() {
             last_range = current_range;
             current_range = self.map_range_tuple(current_range, mapping);
-            print!("{:?}->", current_range);
+            // print!("{:?}->", current_range);
         }
-        println!();
+        // println!();
         if two {
             std::cmp::min(last_range.0, current_range.0)
         } else {
             current_range.0
         }
+    }
+    fn map_to_multiloc(&self, seed_range: (usize, usize)) -> usize {
+        let mut current_ranges = vec![seed_range];
+        for mapping in self.mappings.iter() {
+            let mut next_ranges = Vec::new();
+            for range in current_ranges.iter() {
+                next_ranges.append(&mut self.multi_mappings(*range, mapping));
+            }
+            current_ranges = next_ranges;
+        }
+        current_ranges.iter().map(|&(a, _)| a).min().unwrap()
+    }
+    fn multi_mappings(&self, seed_range: (usize, usize), mapping: &Mapping) -> Vec<(usize, usize)> {
+        let (start, len) = seed_range;
+        let mut result: HashSet<(usize, usize)> = HashSet::new();
+        let mut not_mapped = VecDeque::new();
+        not_mapped.push_back(seed_range);
+        while let Some(to_map) = not_mapped.pop_front() {
+            let mut found = false;
+            for r in mapping.ranges.iter() {
+                if let Some(i) = self.intersect_ranges(to_map, (r.src, r.len)) {
+                    // three things to push, before, inter, after
+                    let offset = i.0 - r.src;
+                    result.insert((r.dst + offset, i.1)); // this one is mapped
+                    let before_start = to_map.0;
+                    let before_len = i.0 - to_map.0;
+                    if before_len > 0 {
+                        not_mapped.push_back((before_start, before_len)) // before intersection
+                    }
+                    let after_start = i.0 + i.1;
+                    let after_len = to_map.0 + to_map.1 - after_start;
+                    if after_len > 0 {
+                        not_mapped.push_back((after_start, after_len));
+                    }
+                    found = true
+                }
+            }
+            if !found {
+                result.insert(to_map);
+            }
+        }
+        // println!("{:?}", seed_range);
+        // println!("{:?}", result);
+        let result: Vec<(usize, usize)> = result.into_iter().collect();
+        assert_eq!(len, result.iter().map(|(_, l)| l).sum());
+        result
     }
     fn map_range_tuple(&self, rt: (usize, usize), mapping: &Mapping) -> (usize, usize) {
         let mut lowest_found = (usize::MAX, 1);
@@ -74,7 +122,7 @@ impl Input {
         let mut lowest = usize::MAX;
         for seed in self.initial_seeds.iter() {
             let mapped = self.map_to_loc((*seed, 1), false);
-            println!("{} -> {}", seed, mapped);
+            // println!("{} -> {}", seed, mapped);
             lowest = std::cmp::min(lowest, mapped);
         }
         lowest
@@ -84,7 +132,7 @@ impl Input {
         for seed_range in self.initial_seeds.chunks(2) {
             let seed_start = seed_range[0];
             let seed_len = seed_range[1];
-            let mapped = self.map_to_loc((seed_start, seed_len), true);
+            let mapped = self.map_to_multiloc((seed_start, seed_len));
             //println!("{} -> {}", seed, mapped);
             lowest = std::cmp::min(lowest, mapped);
         }
@@ -139,8 +187,8 @@ fn parse_input(input: &str) -> Result<Input> {
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    println!("{:?}", input.initial_seeds);
-    println!("{:?}", input.mappings);
+    // println!("{:?}", input.initial_seeds);
+    // println!("{:?}", input.mappings);
     Ok(Answer::Num(input.find_lowest() as i128))
 }
 
@@ -178,7 +226,7 @@ mod tests {
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(55));
+        assert_eq!(answer, Answer::Num(34039469));
         Ok(())
     }
 
