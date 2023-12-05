@@ -21,23 +21,30 @@ struct Input {
 }
 
 impl Input {
-    fn map_to_loc(&self, seed: usize) -> usize {
-        let mut current_range = (seed, 1);
+    fn map_to_loc(&self, seed_range: (usize, usize), two: bool) -> usize {
+        let mut current_range = seed_range;
+        let mut last_range = current_range;
         print!("{:?}->", current_range);
         for mapping in self.mappings.iter() {
+            last_range = current_range;
             current_range = self.map_range_tuple(current_range, mapping);
             print!("{:?}->", current_range);
         }
-        current_range.0
+        println!();
+        if two {
+            std::cmp::min(last_range.0, current_range.0)
+        } else {
+            current_range.0
+        }
     }
     fn map_range_tuple(&self, rt: (usize, usize), mapping: &Mapping) -> (usize, usize) {
         let mut lowest_found = (usize::MAX, 1);
         for r in mapping.ranges.iter() {
             if let Some(i) = self.intersect_ranges(rt, (r.src, r.len)) {
-                assert_eq!(i.1, 1); // thats messed up I know
+                //assert_eq!(i.1, 1); // thats messed up I know
                 if r.dst < lowest_found.0 {
                     let offset = i.0 - r.src;
-                    lowest_found = (r.dst + offset, 1);
+                    lowest_found = (r.dst + offset, i.1);
                 }
             }
         }
@@ -66,8 +73,19 @@ impl Input {
     fn find_lowest(&self) -> usize {
         let mut lowest = usize::MAX;
         for seed in self.initial_seeds.iter() {
-            let mapped = self.map_to_loc(*seed);
+            let mapped = self.map_to_loc((*seed, 1), false);
             println!("{} -> {}", seed, mapped);
+            lowest = std::cmp::min(lowest, mapped);
+        }
+        lowest
+    }
+    fn find_lowest_ranges(&self) -> usize {
+        let mut lowest = usize::MAX;
+        for seed_range in self.initial_seeds.chunks(2) {
+            let seed_start = seed_range[0];
+            let seed_len = seed_range[1];
+            let mapped = self.map_to_loc((seed_start, seed_len), true);
+            //println!("{} -> {}", seed, mapped);
             lowest = std::cmp::min(lowest, mapped);
         }
         lowest
@@ -127,7 +145,7 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    todo!()
+    Ok(Answer::Num(input.find_lowest_ranges() as i128))
 }
 
 #[cfg(test)]
@@ -148,13 +166,13 @@ mod tests {
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(15));
+        assert_eq!(answer, Answer::Num(26273516));
         Ok(())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(46));
         Ok(())
     }
     #[test]
