@@ -51,7 +51,7 @@ impl Input {
         current_ranges.iter().map(|&(a, _)| a).min().unwrap()
     }
     fn multi_mappings(&self, seed_range: (usize, usize), mapping: &Mapping) -> Vec<(usize, usize)> {
-        let (start, len) = seed_range;
+        let (_start, len) = seed_range;
         let mut result: HashSet<(usize, usize)> = HashSet::new();
         let mut not_mapped = VecDeque::new();
         not_mapped.push_back(seed_range);
@@ -237,5 +237,10 @@ mod tests {
     #[bench]
     fn bench_part_two(b: &mut Bencher) {
         b.iter(|| part_two())
+    }
+    #[bench]
+    fn bench_solve_two(b: &mut Bencher) {
+        let input = parse_input(&INPUT).unwrap();
+        b.iter(|| solve_two(&input))
     }
 }
