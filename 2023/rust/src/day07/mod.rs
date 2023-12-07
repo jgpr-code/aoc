@@ -3,12 +3,14 @@ use anyhow::Result;
 use std::{cmp::Ordering, collections::HashMap};
 
 pub fn part_one(input: &str) -> Result<Answer> {
-    let mut input = parse_input(input)?;
+    let joking = false;
+    let mut input = parse_input(input, joking)?;
     solve_one(&mut input)
 }
 
 pub fn part_two(input: &str) -> Result<Answer> {
-    let mut input = parse_input(input)?;
+    let joking = true;
+    let mut input = parse_input(input, joking)?;
     solve_two(&mut input)
 }
 
@@ -19,6 +21,7 @@ struct Input {
 #[derive(Debug, Eq)]
 struct Hand {
     cards: Vec<char>,
+    joking: bool,
 }
 
 impl Hand {
@@ -34,15 +37,21 @@ impl Hand {
         for card in self.cards.iter() {
             counter.entry(*card).and_modify(|c| *c += 1).or_insert(1);
         }
-        let mut counts: Vec<usize> = counter.iter().map(|e| *e.1).collect();
+        let mut counts: Vec<usize> = counter
+            .iter()
+            .filter(|e| !self.joking || *e.0 != 'J')
+            .map(|e| *e.1)
+            .collect();
         counts.sort_unstable();
         let len = counts.len();
-        if len == 1 {
-            // five pairs
-            assert_eq!(counts[0], 5);
+        if len <= 1 {
+            // five kind either jokers or normal
             return 6;
         }
-        let h = counts[len - 1];
+        let mut h = counts[len - 1];
+        if self.joking && counter.contains_key(&'J') {
+            h += counter.get(&'J').unwrap();
+        }
         let s = counts[len - 2];
         match (h, s) {
             (4, 1) => 5,
@@ -54,12 +63,18 @@ impl Hand {
             _ => unreachable!(),
         }
     }
-    fn numeric_card(card: &char) -> usize {
+    fn numeric_card(&self, card: &char) -> usize {
         match card {
             'A' => 14,
             'K' => 13,
             'Q' => 12,
-            'J' => 11,
+            'J' => {
+                if self.joking {
+                    1
+                } else {
+                    11
+                }
+            }
             'T' => 10,
             c => c.to_digit(10).unwrap() as usize,
         }
@@ -76,8 +91,8 @@ impl Ord for Hand {
             return Ordering::Greater;
         }
         for (s, o) in self.cards.iter().zip(other.cards.iter()) {
-            let sn = Self::numeric_card(s);
-            let on = Self::numeric_card(o);
+            let sn = self.numeric_card(s);
+            let on = self.numeric_card(o);
             if sn < on {
                 return Ordering::Less;
             } else if sn > on {
@@ -98,25 +113,25 @@ impl PartialEq for Hand {
     }
 }
 
-fn parse_input(input: &str) -> Result<Input> {
+fn parse_input(input: &str, joking: bool) -> Result<Input> {
     let mut plays = Vec::new();
     for line in input.lines() {
         let (cards, bid) = line.split_once(" ").unwrap();
         let bid = bid.trim().parse().unwrap();
         let cards = cards.trim().chars().collect();
-        plays.push((Hand { cards }, bid));
+        plays.push((Hand { cards, joking }, bid));
     }
     Ok(Input { plays })
 }
 
 fn solve_one(input: &mut Input) -> Result<Answer> {
     let Input { ref mut plays } = input;
-    println!("{:?}", plays);
-    for (hand, bid) in plays.iter() {
-        println!("{:?}:{} rank: {}", hand, bid, hand.get_kind());
-    }
+    // println!("{:?}", plays);
+    // for (hand, bid) in plays.iter() {
+    //     println!("{:?}:{} rank: {}", hand, bid, hand.get_kind());
+    // }
     plays.sort_by(|a, b| a.0.cmp(&b.0));
-    println!("{:?}", plays);
+    // println!("{:?}", plays);
     let mut total_winnings = 0;
     for (i, play) in plays.iter().enumerate() {
         total_winnings += (i + 1) as i128 * play.1;
@@ -125,9 +140,7 @@ fn solve_one(input: &mut Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &mut Input) -> Result<Answer> {
-    let Input { ref mut plays } = input;
-    println!("{:?}", plays);
-    Ok(Answer::Num(0))
+    solve_one(input)
 }
 
 #[cfg(test)]
@@ -142,25 +155,25 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(1));
+        assert_eq!(answer, Answer::Num(6440));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(1));
+        assert_eq!(answer, Answer::Num(250474325));
         Ok(())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(2));
+        assert_eq!(answer, Answer::Num(5905));
         Ok(())
     }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(2));
+        assert_eq!(answer, Answer::Num(248909434));
         Ok(())
     }
 
