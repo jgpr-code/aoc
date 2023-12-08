@@ -60,12 +60,13 @@ fn solve_two(input: &Input) -> Result<Answer> {
         .map(|(k, _)| k.clone())
         .filter(|s| s.ends_with("A"))
         .collect::<Vec<_>>();
-    let mut directions = input.directions.iter().cycle();
-    let mut steps = 0;
     for node in current_nodes {
         let a = det_cycle(input, node.as_str());
         println!("{} -> {:?}", node, a);
     }
+
+    // let mut directions = input.directions.iter().cycle();
+    // let mut steps = 0;
     // loop {
     //     println!("{:?}", current_nodes);
     //     if current_nodes.iter().all(|s| s.ends_with("Z")) {
@@ -83,7 +84,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
     //     }
     //     steps += 1;
     // }
-    Ok(Answer::Num(steps))
+    Ok(Answer::Num(0))
 }
 
 // returns all steps in cycle where at_node ends with "Z" and it returns first the offset until we reach the cycle
@@ -128,8 +129,11 @@ fn det_cycle(input: &Input, node: &str) -> ((usize, usize), Vec<usize>) {
         // 2 + o*11909 + 11909
         // 2 + p*18557 + 18557
 
-        // n = 756916486
+        // 16 + ax1 + bx2 + cx3 + dx4 + ex5 + fx6 + largenumber = 6*steps
+
+        // wolfram alpha eq
         // 2 + n*21883 + 21881 ==  3 + m*16897 + 16894 == 5 + k*20221 + 20216 == 2 + l*16343 + 16341 == 2 + o*11911 + 11909 == 2 + p*18559 + 18557, n>=0,m>=0,k>=0,l>=0,o>=0,p>=0
+        // n = 756916486
     }
     ((first_in_loop, last_in_loop - first_in_loop + 1), at_end)
 }
@@ -165,7 +169,7 @@ mod tests {
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(2));
+        assert_eq!(answer, Answer::Num(16563603485021));
         Ok(())
     }
 
