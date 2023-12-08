@@ -1,6 +1,6 @@
 use super::common::*;
 use anyhow::Result;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -54,37 +54,22 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let mut current_nodes = input
+    let start_nodes = input
         .nodes
         .iter()
         .map(|(k, _)| k.clone())
         .filter(|s| s.ends_with("A"))
         .collect::<Vec<_>>();
-    for node in current_nodes {
-        let a = det_cycle(input, node.as_str());
-        println!("{} -> {:?}", node, a);
-    }
 
-    // let mut directions = input.directions.iter().cycle();
-    // let mut steps = 0;
-    // loop {
-    //     println!("{:?}", current_nodes);
-    //     if current_nodes.iter().all(|s| s.ends_with("Z")) {
-    //         break;
-    //     }
-    //     let dir = directions.next().unwrap();
-    //     for node in current_nodes.iter_mut() {
-    //         let (left, right) = input.nodes.get(node.as_str()).unwrap();
-    //         node.clear();
-    //         match dir {
-    //             'L' => node.push_str(left),
-    //             'R' => node.push_str(right),
-    //             _ => unreachable!(),
-    //         }
-    //     }
-    //     steps += 1;
-    // }
-    Ok(Answer::Num(0))
+    let answer = start_nodes
+        .iter()
+        .map(|n| {
+            let ((_offset, loop_size), loop_offsets) = det_cycle(input, n.as_str());
+            assert_eq!(loop_size, *loop_offsets.last().unwrap()); // otherwise lcm won't work
+            loop_size
+        })
+        .fold(1, |acc, x| num::integer::lcm(acc, x));
+    Ok(Answer::Num(answer as i128))
 }
 
 // returns all steps in cycle where at_node ends with "Z" and it returns first the offset until we reach the cycle
@@ -95,7 +80,7 @@ fn det_cycle(input: &Input, node: &str) -> ((usize, usize), Vec<usize>) {
     let mut at_node = node;
     let mut was_at: HashMap<(usize, &str), usize> = HashMap::new();
     let mut at_end = Vec::new();
-    let mut first_in_loop = 0;
+    let first_in_loop;
     let mut last_in_loop = 0;
     let mut steps = 0;
     loop {
@@ -118,22 +103,11 @@ fn det_cycle(input: &Input, node: &str) -> ((usize, usize), Vec<usize>) {
         at_dir = (at_dir + 1) % len;
         last_in_loop = steps;
         steps += 1;
-        // 1 + n*2 + 1
-        // 1 + n*6 + 2
-        // 1 + n*6 + 5
 
-        // 2 + n*21881 + 21881
-        // 3 + m*16895 + 16894
-        // 5 + k*20219 + 20216
-        // 2 + l*16341 + 16339
-        // 2 + o*11909 + 11909
-        // 2 + p*18557 + 18557
-
-        // 16 + ax1 + bx2 + cx3 + dx4 + ex5 + fx6 + largenumber = 6*steps
-
-        // wolfram alpha eq
+        // wolfram alpha eq (would work in the almost general case where for every ghost only one goal is reached during a loop)
         // 2 + n*21883 + 21881 ==  3 + m*16897 + 16894 == 5 + k*20221 + 20216 == 2 + l*16343 + 16341 == 2 + o*11911 + 11909 == 2 + p*18559 + 18557, n>=0,m>=0,k>=0,l>=0,o>=0,p>=0
         // n = 756916486
+        // ans = 2 + 756916486*21883 + 21881
     }
     ((first_in_loop, last_in_loop - first_in_loop + 1), at_end)
 }
@@ -147,6 +121,7 @@ mod tests {
     static TEST: LazyLock<String> = local_file!("test.txt");
     static TEST2: LazyLock<String> = local_file!("test2.txt");
     static INPUT: LazyLock<String> = local_file!("input.txt");
+    static INPUT_LUCIE: LazyLock<String> = local_file!("input_lucie.txt");
 
     #[test]
     fn test_one() -> Result<()> {
@@ -170,6 +145,12 @@ mod tests {
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
         assert_eq!(answer, Answer::Num(16563603485021));
+        Ok(())
+    }
+    #[test]
+    fn part_two_lucie() -> Result<()> {
+        let answer = super::part_two(&INPUT_LUCIE)?;
+        assert_eq!(answer, Answer::Num(17972669116327));
         Ok(())
     }
 
