@@ -12,6 +12,7 @@ mod day05;
 mod day06;
 mod day07;
 mod day08;
+mod day09;
 
 use common::*;
 use std::path::PathBuf;
@@ -46,5 +47,7 @@ fn main() {
     solver.add(7, 2, day07::part_two);
     solver.add(8, 1, day08::part_one);
     solver.add(8, 2, day08::part_two);
+    solver.add(9, 1, day09::part_one);
+    solver.add(9, 2, day09::part_two);
     solver.solve(opt);
 }
