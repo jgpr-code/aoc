@@ -51,7 +51,6 @@ fn seq_pyramide(seq: &Vec<i128>) -> Vec<Vec<i128>> {
     }
     //println!("{:?}", all_seqs);
     all_seqs
-    //all_seqs.iter().map(|s| s.last().unwrap()).sum()
 }
 
 fn next_val(seq_pyramide: &Vec<Vec<i128>>) -> i128 {
@@ -59,17 +58,13 @@ fn next_val(seq_pyramide: &Vec<Vec<i128>>) -> i128 {
 }
 
 fn prev_val(seq_pyramide: &Vec<Vec<i128>>) -> i128 {
-    //2 -> 2 - 0 = 2
-    //0 -> 0 - 2 = -2
     let mut last_add = 0;
-    let mut sum = 0;
     for c in seq_pyramide
         .iter()
         .rev()
         .skip(1)
         .map(|v| v.first().unwrap())
     {
-        println!("{:?} {:?}", last_add, c);
         last_add = c - last_add;
     }
     last_add
@@ -91,7 +86,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
     for seq in sequences.iter() {
         let seq_pyra = seq_pyramide(seq);
         let pval = prev_val(&seq_pyra);
-        println!("{:?}", pval);
+        // println!("{:?}", pval);
         sum += pval
     }
     Ok(Answer::Num(sum))
@@ -109,13 +104,13 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(1));
+        assert_eq!(answer, Answer::Num(114));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(1));
+        assert_eq!(answer, Answer::Num(1702218515));
         Ok(())
     }
     #[test]
@@ -127,7 +122,7 @@ mod tests {
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(2));
+        assert_eq!(answer, Answer::Num(925));
         Ok(())
     }
 
