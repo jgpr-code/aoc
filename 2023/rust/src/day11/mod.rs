@@ -4,12 +4,12 @@ use super::common::*;
 use anyhow::Result;
 
 pub fn part_one(input: &str) -> Result<Answer> {
-    let mut input = parse_input(input)?;
+    let mut input = parse_input(input, false)?;
     solve_one(&mut input)
 }
 
 pub fn part_two(input: &str) -> Result<Answer> {
-    let mut input = parse_input(input)?;
+    let mut input = parse_input(input, true)?;
     solve_two(&mut input)
 }
 
@@ -18,13 +18,10 @@ struct Pos(usize, usize);
 
 #[derive(Debug)]
 struct Input {
-    universe: Vec<Vec<char>>,
-    empty_rows: HashSet<usize>,
-    empty_cols: HashSet<usize>,
     galaxy_distances: HashMap<(Pos, Pos), i128>,
 }
 
-fn parse_input(input: &str) -> Result<Input> {
+fn parse_input(input: &str, part_two: bool) -> Result<Input> {
     let universe: Vec<Vec<char>> = input.lines().map(|l| l.chars().collect()).collect();
     let rows = universe.len();
     let cols = universe.first().unwrap().len();
@@ -69,14 +66,22 @@ fn parse_input(input: &str) -> Result<Input> {
                 let r_above = r - 1;
                 topdist = topleft_distances[r_above][c] + 1;
                 if empty_rows.contains(&r_above) {
-                    topdist += 1000000 - 1;
+                    if part_two {
+                        topdist += 1000000 - 1;
+                    } else {
+                        topdist += 1;
+                    }
                 }
             }
             if c >= 1 {
                 let c_left = c - 1;
                 leftdist = topleft_distances[r][c_left] + 1;
                 if empty_cols.contains(&c_left) {
-                    leftdist += 1000000 - 1;
+                    if part_two {
+                        leftdist += 1000000 - 1;
+                    } else {
+                        leftdist += 1;
+                    }
                 }
             }
             topleft_distances[r][c] = std::cmp::min(topdist, leftdist);
@@ -95,14 +100,22 @@ fn parse_input(input: &str) -> Result<Input> {
                 let r_above = r - 1;
                 topdist = topright_distances[r_above][c] + 1;
                 if empty_rows.contains(&r_above) {
-                    topdist += 1000000 - 1;
+                    if part_two {
+                        topdist += 1000000 - 1;
+                    } else {
+                        topdist += 1;
+                    }
                 }
             }
             if c + 1 < cols {
                 let c_right = c + 1;
                 rightdist = topright_distances[r][c_right] + 1;
                 if empty_cols.contains(&c_right) {
-                    rightdist += 1000000 - 1;
+                    if part_two {
+                        rightdist += 1000000 - 1;
+                    } else {
+                        rightdist += 1;
+                    }
                 }
             }
             topright_distances[r][c] = std::cmp::min(topdist, rightdist);
@@ -141,12 +154,7 @@ fn parse_input(input: &str) -> Result<Input> {
             galaxy_distances.insert(k, v);
         }
     }
-    Ok(Input {
-        universe,
-        empty_rows,
-        empty_cols,
-        galaxy_distances,
-    })
+    Ok(Input { galaxy_distances })
 }
 
 fn solve_one(input: &mut Input) -> Result<Answer> {
@@ -156,7 +164,7 @@ fn solve_one(input: &mut Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &mut Input) -> Result<Answer> {
-    todo!()
+    solve_one(input)
 }
 
 #[cfg(test)]
@@ -171,25 +179,25 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(374));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(9769724));
         Ok(())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(-2));
+        assert_eq!(answer, Answer::Num(82000210));
         Ok(())
     }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-2));
+        assert_eq!(answer, Answer::Num(603020563700));
         Ok(())
     }
 
