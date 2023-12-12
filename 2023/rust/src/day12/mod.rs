@@ -141,22 +141,24 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let Input { springs, records } = input;
     let mut sum = 0;
     for (springs, records) in springs.iter().zip(records.iter()) {
-        let springs: Vec<char> = springs
-            .into_iter()
-            .cycle()
-            .take(springs.len() * 5)
-            .map(|&c| c)
-            .collect();
+        let mut rsprings = Vec::new();
+        for i in 0..5 {
+            rsprings.append(&mut springs.clone());
+            if i != 4 {
+                rsprings.push('?')
+            }
+        }
         let records: Vec<usize> = records
             .into_iter()
             .cycle()
             .take(records.len() * 5)
             .map(|&c| c)
             .collect();
-        let answer = solve_line(&springs, &records);
-        sum += solve_line(&springs, &records);
-        let sprstr = String::from_iter(springs.iter());
+        let answer = solve_line(&rsprings, &records);
+        sum += answer;
+        let sprstr = String::from_iter(rsprings.iter());
         println!("solved {}, {:?} = {}", sprstr, records, answer);
+        // break;
     }
     Ok(Answer::Num(sum as i128))
 }
