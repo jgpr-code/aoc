@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::common::*;
 use anyhow::Result;
@@ -137,28 +137,151 @@ fn solve_one(input: &Input) -> Result<Answer> {
     Ok(Answer::Num(sum as i128))
 }
 
+fn solve_line_two(springs: &[char], records: &[usize]) -> usize {
+    let mut memo = HashMap::new();
+    let mut counted = HashSet::new();
+    let rem = springs.iter().map(|&c| c).collect();
+    let mat: Vec<char> = Vec::new();
+    let des_len = springs.len();
+    solve_help(&mut memo, rem, records, 0, mat, &mut counted, des_len)
+}
+fn solve_help(
+    memo: &mut HashMap<(String, usize), usize>,
+    rem: Vec<char>,
+    records: &[usize],
+    rpos: usize,
+    mat: Vec<char>,
+    counted: &mut HashSet<String>,
+    des_len: usize,
+) -> usize {
+    let matstr = String::from_iter(mat.iter());
+    let remstr = String::from_iter(rem.iter());
+    if let Some(count) = memo.get(&(remstr.clone(), rpos)) {
+        println!(
+            "{}<>{},{}({:?}) = {}",
+            matstr.clone(),
+            remstr.clone(),
+            rpos,
+            &records[rpos..],
+            count
+        );
+        return *count;
+    }
+    if rpos >= records.len() {
+        if rem.contains(&'#') {
+            return 0; // invalid
+        } else {
+            let matstr = String::from_iter(mat.iter());
+            let remstr = String::from_iter(rem.iter());
+            // println!("{}{}", matstr, remstr);
+            let complete_str = format!("{}{}", matstr, remstr).replace("?", ".");
+            if counted.contains(&complete_str) {
+                return 0;
+            } else {
+                counted.insert(complete_str.clone());
+                println!("complete {}", complete_str);
+                assert_eq!(des_len, complete_str.len());
+                let cvec: Vec<char> = complete_str.chars().collect();
+                if is_invalid(&cvec, records) {
+                    return 0;
+                } else {
+                    return 1; // valid
+                }
+            }
+        }
+    }
+    // try placing .####. if records is 4
+    // e.g. .?????.##
+    // plac .####..## next with ..##
+    // plac ..####.## next with .##
+    // plac ...###### not possible! done
+    let place = format!(".{}.", "#".repeat(records[rpos]));
+    let place: Vec<char> = place.chars().collect();
+    let mut count: usize = 0;
+    for i in 0..rem.len() {
+        let mut valid = true;
+        for j in 0..place.len() {
+            if i + j >= rem.len() || !(rem[i + j] == '?' || rem[i + j] == place[j]) {
+                valid = false;
+                break;
+            }
+        }
+        if valid {
+            let start_rem = i + place.len() - 1;
+            let mut matadd = Vec::from_iter(rem[0..start_rem].iter().map(|&c| c));
+            for j in 0..place.len() - 1 {
+                matadd[i + j] = place[j];
+            }
+            let mut next_rem = Vec::from_iter(rem[start_rem..].iter().map(|&c| c));
+            assert_ne!(next_rem[0], '#');
+            next_rem[0] = '.'; // important because it might have been ? before
+            let mut next_mat = mat.clone();
+            next_mat.append(&mut matadd);
+
+            // println!(
+            //     "{}: {}, {}, {}, {}",
+            //     i,
+            //     String::from_iter(rem.iter()),
+            //     String::from_iter(place.iter()),
+            //     String::from_iter(next_mat.iter()),
+            //     String::from_iter(next_rem.iter())
+            // );
+            // check whether matstr+remstr can still be valid
+            let current = format!(
+                "{}{}",
+                String::from_iter(next_mat.iter()),
+                String::from_iter(next_rem.iter())
+            );
+            let current: Vec<char> = current
+                .chars()
+                .map(|c| if c == '?' { '.' } else { c })
+                .collect();
+            let current = String::from_iter(current.iter());
+            if scan(&current, records) {
+                count += solve_help(
+                    memo,
+                    next_rem,
+                    records,
+                    rpos + 1,
+                    next_mat,
+                    counted,
+                    des_len,
+                );
+            }
+        }
+    }
+    if count > 0 {
+        memo.insert((remstr, rpos), count);
+    }
+    count
+}
+
+//
+
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { springs, records } = input;
     let mut sum = 0;
-    for (springs, records) in springs.iter().zip(records.iter()) {
+    for (springs, records) in springs.iter().zip(records.iter()).rev() {
         let mut rsprings = Vec::new();
+        rsprings.push('.'); // makes processing later easier!
         for i in 0..5 {
             rsprings.append(&mut springs.clone());
             if i != 4 {
                 rsprings.push('?')
             }
         }
+        rsprings.push('.'); // makes processing later easier!
         let records: Vec<usize> = records
             .into_iter()
             .cycle()
             .take(records.len() * 5)
             .map(|&c| c)
             .collect();
-        let answer = solve_line(&rsprings, &records);
+        let answer = solve_line_two(&rsprings, &records);
         sum += answer;
         let sprstr = String::from_iter(rsprings.iter());
         println!("solved {}, {:?} = {}", sprstr, records, answer);
-        // break;
+        break;
     }
     Ok(Answer::Num(sum as i128))
 }
@@ -188,6 +311,20 @@ mod tests {
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
         assert_eq!(answer, Answer::Num(14));
+        Ok(())
+    }
+    #[test]
+    fn test_solve_two() -> Result<()> {
+        let a: Vec<char> = ".?###??????????###????????.".chars().collect();
+        let ans = super::solve_line_two(&a[..], &[3, 2, 1, 3, 2, 1]);
+        assert_eq!(ans, 1234);
+        Ok(())
+    }
+    #[test]
+    fn aaa() -> Result<()> {
+        let a: Vec<char> = ".???###????????.".chars().collect();
+        let ans = super::solve_line_two(&a[..], &[3, 2, 1]);
+        assert_eq!(ans, 1234);
         Ok(())
     }
     #[test]
