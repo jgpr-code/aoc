@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 use super::common::*;
 use anyhow::Result;
@@ -44,7 +44,7 @@ fn solve_line(springs: &[char], records: &[usize]) -> usize {
 fn solve_helper(springs: &[char], records: &[usize], spos: usize, count: &mut usize) {
     // println!("{:?}, {:?}, {}, {}", springs, records, spos, count);
     if spos == springs.len() && !is_invalid(springs, records) {
-        let springs_string: String = springs.iter().collect();
+        // let springs_string: String = springs.iter().collect();
         // println!("{}", springs_string);
         *count += 1;
         return;
@@ -110,7 +110,7 @@ fn scan(springs: &str, records: &[usize]) -> bool {
     for i in 0..springs.len() {
         let c = springs[i];
         if c == '?' {
-            return true;
+            return ri >= records.len() || connected <= records[ri];
         } else if c == '#' {
             connected += 1;
         } else if connected != 0 {
@@ -121,7 +121,9 @@ fn scan(springs: &str, records: &[usize]) -> bool {
             ri += 1;
         }
     }
-    return true;
+    // println!("springs {:?}, records {:?}", springs, records);
+
+    return ri >= records.len();
 }
 
 fn count_c(line: &str, c: char) -> usize {
@@ -139,11 +141,10 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_line_two(springs: &[char], records: &[usize]) -> usize {
     let mut memo = HashMap::new();
-    let mut counted = HashSet::new();
     let rem = springs.iter().map(|&c| c).collect();
     let mat: Vec<char> = Vec::new();
     let des_len = springs.len();
-    solve_help(&mut memo, rem, records, 0, mat, &mut counted, des_len)
+    solve_help(&mut memo, rem, records, 0, mat, des_len)
 }
 fn solve_help(
     memo: &mut HashMap<(String, usize), usize>,
@@ -151,20 +152,25 @@ fn solve_help(
     records: &[usize],
     rpos: usize,
     mat: Vec<char>,
-    counted: &mut HashSet<String>,
     des_len: usize,
 ) -> usize {
-    let matstr = String::from_iter(mat.iter());
+    // let matstr = String::from_iter(mat.iter());
     let remstr = String::from_iter(rem.iter());
+    // println!(
+    //     "calling mat={} rem={} rec={:?}",
+    //     matstr,
+    //     remstr,
+    //     &records[rpos..]
+    // );
     if let Some(count) = memo.get(&(remstr.clone(), rpos)) {
-        println!(
-            "{}<>{},{}({:?}) = {}",
-            matstr.clone(),
-            remstr.clone(),
-            rpos,
-            &records[rpos..],
-            count
-        );
+        // println!(
+        //     "{} || {},{}({:?}) = {}",
+        //     matstr.clone(),
+        //     remstr.clone(),
+        //     rpos,
+        //     &records[rpos..],
+        //     count
+        // );
         return *count;
     }
     if rpos >= records.len() {
@@ -173,20 +179,14 @@ fn solve_help(
         } else {
             let matstr = String::from_iter(mat.iter());
             let remstr = String::from_iter(rem.iter());
-            // println!("{}{}", matstr, remstr);
+            // println!("{} || {}", matstr, remstr);
             let complete_str = format!("{}{}", matstr, remstr).replace("?", ".");
-            if counted.contains(&complete_str) {
-                return 0;
+            assert_eq!(des_len, complete_str.len());
+            if scan(&complete_str, &records) {
+                // println!("{} complete", complete_str);
+                return 1;
             } else {
-                counted.insert(complete_str.clone());
-                println!("complete {}", complete_str);
-                assert_eq!(des_len, complete_str.len());
-                let cvec: Vec<char> = complete_str.chars().collect();
-                if is_invalid(&cvec, records) {
-                    return 0;
-                } else {
-                    return 1; // valid
-                }
+                return 0;
             }
         }
     }
@@ -227,30 +227,42 @@ fn solve_help(
             //     String::from_iter(next_rem.iter())
             // );
             // check whether matstr+remstr can still be valid
-            let current = format!(
-                "{}{}",
-                String::from_iter(next_mat.iter()),
-                String::from_iter(next_rem.iter())
-            );
-            let current: Vec<char> = current
-                .chars()
-                .map(|c| if c == '?' { '.' } else { c })
-                .collect();
-            let current = String::from_iter(current.iter());
-            if scan(&current, records) {
-                count += solve_help(
-                    memo,
-                    next_rem,
-                    records,
-                    rpos + 1,
-                    next_mat,
-                    counted,
-                    des_len,
-                );
+            let next_matstr =
+                String::from_iter(next_mat.iter().map(|&c| if c == '?' { '.' } else { c }));
+            let current = format!("{}{}", next_matstr, String::from_iter(next_rem.iter()));
+            let ok =
+                scan(&format!("{}.", next_matstr), &records[..rpos + 1]) && scan(&current, records);
+            // println!("{}  {}", current, ok);
+            if ok {
+                // println!(
+                //     "{}: {}, {}, {}, {}",
+                //     i,
+                //     String::from_iter(rem.iter()),
+                //     String::from_iter(place.iter()),
+                //     String::from_iter(next_mat.iter()),
+                //     String::from_iter(next_rem.iter())
+                // );
+                let add = solve_help(memo, next_rem.clone(), records, rpos + 1, next_mat, des_len);
+                //memo.insert((String::from_iter(next_rem.iter()), rpos + 1), add);
+                count += add;
             }
         }
     }
-    if count > 0 {
+
+    let current = format!(
+        "{}{}",
+        String::from_iter(mat.iter().map(|&c| if c == '?' { '.' } else { c })),
+        String::from_iter(rem.iter())
+    );
+    let ok = scan(&current, records);
+    if ok {
+        // println!(
+        //     "inserting ({}, {}({:?})) = {}",
+        //     remstr,
+        //     rpos,
+        //     &records[rpos..],
+        //     count
+        // );
         memo.insert((remstr, rpos), count);
     }
     count
@@ -281,7 +293,6 @@ fn solve_two(input: &Input) -> Result<Answer> {
         sum += answer;
         let sprstr = String::from_iter(rsprings.iter());
         println!("solved {}, {:?} = {}", sprstr, records, answer);
-        break;
     }
     Ok(Answer::Num(sum as i128))
 }
@@ -310,7 +321,7 @@ mod tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(14));
+        assert_eq!(answer, Answer::Num(525152));
         Ok(())
     }
     #[test]
@@ -320,17 +331,51 @@ mod tests {
         assert_eq!(ans, 1234);
         Ok(())
     }
-    #[test]
-    fn aaa() -> Result<()> {
-        let a: Vec<char> = ".???###????????.".chars().collect();
-        let ans = super::solve_line_two(&a[..], &[3, 2, 1]);
-        assert_eq!(ans, 1234);
-        Ok(())
-    }
+    // #[test]
+    // fn aaa() -> Result<()> {
+    //     let a: Vec<char> = ".??????????###????????.".chars().collect();
+    //     let ans = super::solve_line_two(&a[..], &[3, 2, 1, 3]);
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
+    // #[test]
+    // fn bbb() -> Result<()> {
+    //     let a: Vec<char> = ".#?.?.#??#???#.?.???#?.?.#??#???#.?.???#?.?.#??#???#.?.???#?.?.#??#???#.?.???#?.?.#??#???#.?.??.".chars().collect();
+    //     let ans = super::solve_line_two(
+    //         &a[..],
+    //         &[
+    //             2, 1, 1, 2, 2, 2, 1, 1, 2, 2, 2, 1, 1, 2, 2, 2, 1, 1, 2, 2, 2, 1, 1, 2, 2,
+    //         ],
+    //     );
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
+    // #[test]
+    // fn ccc() -> Result<()> {
+    //     let a: Vec<char> = ".#?.?.#??#???#.?.???#?.?.#??#???#.?.??.".chars().collect();
+    //     let ans = super::solve_line_two(&a[..], &[2, 1, 1, 2, 2, 2, 1, 1, 2, 2]);
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
+    // #[test]
+    // fn ddd() -> Result<()> {
+    //     let a: Vec<char> = ".???.?.?.?.?.###.???????.".chars().collect();
+    //     let ans = super::solve_line_two(&a[..], &[2, 3, 2, 1]);
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
+
+    // #[test]
+    // fn eee() -> Result<()> {
+    //     let a: Vec<char> = ".?#???#.?.??.".chars().collect();
+    //     let ans = super::solve_line_two(&a[..], &[1, 2, 2]);
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(55));
+        assert_eq!(answer, Answer::Num(2043098029844));
         Ok(())
     }
 
