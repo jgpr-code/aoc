@@ -1,6 +1,5 @@
 use super::common::*;
 use anyhow::Result;
-use std::num::ParseIntError;
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
@@ -17,23 +16,22 @@ struct Input {
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    let nums = input
-        .lines()
-        .map(|l| l.parse::<i128>())
-        .collect::<Result<Vec<_>, ParseIntError>>()?;
+    let nums = input.lines().map(|l| l.parse::<i128>().unwrap()).collect();
     Ok(Input { nums })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
     let Input { nums } = input;
     let sum = nums.iter().sum::<i128>();
-    Ok(Answer::Num(sum))
+    println!("sum = {}", sum);
+    Ok(Answer::Num(-1))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { nums } = input;
     let squared_sum = nums.iter().map(|n| n * n).sum::<i128>();
-    Ok(Answer::Num(squared_sum))
+    println!("squared sum = {}", squared_sum);
+    Ok(Answer::Num(-1))
 }
 
 #[cfg(test)]
@@ -48,25 +46,25 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(6));
+        assert_eq!(answer, Answer::Num(-1));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(15));
+        assert_eq!(answer, Answer::Num(-1));
         Ok(())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(14));
+        assert_eq!(answer, Answer::Num(-1));
         Ok(())
     }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(55));
+        assert_eq!(answer, Answer::Num(-1));
         Ok(())
     }
 
