@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(742));
         Ok(())
     }
     #[test]
@@ -188,16 +188,16 @@ mod tests {
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(918));
         Ok(())
     }
 
     #[bench]
-    fn bench_one(b: &mut Bencher) {
+    fn bench_part_one(b: &mut Bencher) {
         b.iter(|| part_one())
     }
     #[bench]
-    fn bench_two(b: &mut Bencher) {
+    fn bench_part_two(b: &mut Bencher) {
         b.iter(|| part_two())
     }
 }
