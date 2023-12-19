@@ -141,6 +141,27 @@ struct XmasRule {
 }
 
 impl XmasRule {
+    fn from_vec(v: &[(i128, i128)]) -> Self {
+        assert_eq!(v.len(), 4);
+        XmasRule {
+            x: v[0],
+            m: v[1],
+            a: v[2],
+            s: v[3],
+        }
+    }
+    fn to_vec(&self) -> Vec<(i128, i128)> {
+        vec![self.x, self.m, self.a, self.s]
+    }
+    fn idx(c: char) -> usize {
+        match c {
+            'x' => 0,
+            'm' => 1,
+            'a' => 2,
+            's' => 3,
+            _ => panic!("not expected"),
+        }
+    }
     fn is_consistent(&self) -> bool {
         let x = self.x;
         let m = self.m;
@@ -174,6 +195,70 @@ impl XmasRule {
             * (self.a.1 - self.a.0 + 1)
             * (self.s.1 - self.s.0 + 1)
     }
+    // fn apply_rule(&self, rule: &Rule) -> Self {
+    //     match rule {
+    //         &Rule::LessThan(, , ) => todo!(),
+    //         &Rule::MoreThan(, , ) => todo!(),
+    //         &Rule::Goto() => todo!(),
+    //     }
+    // }
+}
+
+fn solve(input: &Input) -> Result<Answer> {
+    let Input {
+        workflows,
+        parts: _,
+    } = input;
+
+    let answer = solve_helper(
+        String::from("in"),
+        workflows,
+        vec![(1, 4000), (1, 4000), (1, 4000), (1, 4000)],
+    );
+    Ok(Answer::Num(answer))
+}
+
+fn solve_helper(
+    node: String,
+    wfmap: &HashMap<String, Workflow>,
+    allowed: Vec<(i128, i128)>,
+) -> i128 {
+    if node == "A" {
+        return XmasRule::from_vec(&allowed).count();
+    }
+    if node == "R" {
+        return 0;
+    }
+
+    let mut sum = 0;
+    let wf = wfmap.get(&node).unwrap();
+    let mut still_allowed = allowed.clone();
+    for rule in wf.rules.iter() {
+        let target: String;
+        let mut if_taken = still_allowed.clone();
+        match rule {
+            Rule::LessThan(c, l, t) => {
+                target = t.clone();
+                let idx = XmasRule::idx(*c);
+                let (low, up) = still_allowed[idx];
+                if_taken[idx] = (low, *l - 1);
+                still_allowed[idx] = (*l, up);
+            }
+            Rule::MoreThan(c, l, t) => {
+                target = t.clone();
+                let idx = XmasRule::idx(*c);
+                let (low, up) = still_allowed[idx];
+                if_taken[idx] = (*l + 1, up);
+                still_allowed[idx] = (low, *l);
+            }
+            Rule::Goto(t) => target = t.clone(),
+        }
+        if XmasRule::from_vec(&if_taken).is_consistent() {
+            sum += solve_helper(target, wfmap, if_taken);
+        }
+        // or try again
+    }
+    sum
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -311,7 +396,8 @@ fn solve_two(input: &Input) -> Result<Answer> {
 
     // maybe graph is DAG?
     // combine node strings into path string and use that to check if path was already done before
-    Ok(Answer::Num(sum))
+    solve(input)
+    // Ok(Answer::Num(sum))
 }
 
 #[cfg(test)]
