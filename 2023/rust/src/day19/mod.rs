@@ -150,9 +150,9 @@ impl XmasRule {
             s: v[3],
         }
     }
-    fn to_vec(&self) -> Vec<(i128, i128)> {
-        vec![self.x, self.m, self.a, self.s]
-    }
+    // fn to_vec(&self) -> Vec<(i128, i128)> {
+    //     vec![self.x, self.m, self.a, self.s]
+    // }
     fn idx(c: char) -> usize {
         match c {
             'x' => 0,
@@ -386,7 +386,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
             }
         }
     }
+    println!("wrong sum {}", sum);
 
+    // TODO solve the overlapping ranges problem maybe some day
     // (1,3) (2,5)
     // (2,3) (3,7)
 
