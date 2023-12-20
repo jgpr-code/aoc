@@ -234,6 +234,33 @@ fn push_button(modules: &mut HashMap<String, Module>) -> (usize, usize) {
     (low, high)
 }
 
+fn push_button_rx(modules: &mut HashMap<String, Module>) -> bool {
+    let mut pulses_to_handle = VecDeque::new();
+    pulses_to_handle.push_back((
+        String::from("broadcaster"),
+        Pulse::Low(String::from("button")),
+    ));
+    while let Some((receiver, pulse)) = pulses_to_handle.pop_front() {
+        match pulse {
+            Pulse::Low(_) => {
+                if receiver == "rx" {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        if let Some(receiving_module) = modules.get_mut(&receiver) {
+            let next_pulses = receiving_module.handle_pulse(pulse);
+            for np in next_pulses {
+                pulses_to_handle.push_back(np);
+            }
+        } else {
+            // println!("untyped receiver {}", receiver);
+        }
+    }
+    return false;
+}
+
 fn solve_one(input: &Input) -> Result<Answer> {
     let Input { modules } = input;
     let mut modules = modules.clone();
@@ -257,7 +284,17 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let mut modules = modules.clone();
     let (low, high) = push_button(&mut modules);
     println!("low={}, high={}", low, high);
-    Ok(Answer::Num(-1))
+    let mut looping = 0;
+    loop {
+        looping += 1;
+        if push_button_rx(&mut modules) {
+            break;
+        }
+        if looping % 10000 == 0 {
+            println!("{}", looping);
+        }
+    }
+    Ok(Answer::Num(looping))
 }
 
 #[cfg(test)]
