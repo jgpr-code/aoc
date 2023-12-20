@@ -309,13 +309,13 @@ mod tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(32000000));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(861743850));
         Ok(())
     }
     #[test]
