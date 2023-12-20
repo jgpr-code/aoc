@@ -27,6 +27,13 @@ impl Module {
             Module::Broad(broadcast) => broadcast.handle_pulse(pulse),
         }
     }
+    fn handle_pulse_iter(&mut self, pulse: Pulse, i: i128) -> Vec<(String, Pulse)> {
+        match self {
+            Module::Flip(flipflop) => flipflop.handle_pulse(pulse),
+            Module::Conj(conjunction) => conjunction.handle_pulse_iter(pulse, i),
+            Module::Broad(broadcast) => broadcast.handle_pulse(pulse),
+        }
+    }
     fn get_outputs(&self) -> Vec<String> {
         match self {
             Module::Flip(flipflop) => flipflop.get_outputs(),
@@ -117,6 +124,51 @@ impl Conjunction {
                 _ => {}
             }
         }
+        // let of_interest = vec!["pn", "jg", "qx", "zt"]; // specific to my input
+        // if of_interest.contains(&self.name.as_str()) {
+        //     match &send_pulse {
+        //         Pulse::Low(name) => {
+        //             println!("{} send low", name)
+        //         }
+        //         _ => {}
+        //     }
+        // }
+        self.outputs
+            .iter()
+            .map(|s| (s.clone(), send_pulse.clone()))
+            .collect()
+    }
+    fn handle_pulse_iter(&mut self, pulse: Pulse, i: i128) -> Vec<(String, Pulse)> {
+        match &pulse {
+            Pulse::Low(sender) => {
+                let mem = self.memory.get_mut(sender).unwrap();
+                *mem = pulse.clone();
+            }
+            Pulse::High(sender) => {
+                let mem = self.memory.get_mut(sender).unwrap();
+                *mem = pulse.clone();
+            }
+        }
+        let mut send_pulse = Pulse::Low(self.name.clone());
+        for v in self.memory.values() {
+            match v {
+                &Pulse::Low(_) => {
+                    send_pulse = Pulse::High(self.name.clone());
+                    break;
+                }
+                _ => {}
+            }
+        }
+        self.check_send(i);
+        // let of_interest = vec!["pn", "jg", "qx", "zt"]; // specific to my input
+        // if of_interest.contains(&self.name.as_str()) {
+        //     match &send_pulse {
+        //         Pulse::Low(name) => {
+        //             println!("{} send low", name)
+        //         }
+        //         _ => {}
+        //     }
+        // }
         self.outputs
             .iter()
             .map(|s| (s.clone(), send_pulse.clone()))
@@ -127,6 +179,36 @@ impl Conjunction {
     }
     fn add_memory(&mut self, from: String) {
         self.memory.insert(from.clone(), Pulse::Low(from.clone()));
+    }
+    fn print_memory(&self) {
+        let of_interest = vec!["pn", "jg", "qx", "zt"]; // specific to my input
+        if !of_interest.contains(&self.name.as_str()) {
+            return;
+        }
+        print!("&{}: ", self.name);
+        for (name, pulse) in self.memory.iter() {
+            let pulse_val = match pulse {
+                Pulse::Low(_) => 0,
+                Pulse::High(_) => 1,
+            };
+            print!("{}:{}; ", name, pulse_val);
+        }
+        println!();
+    }
+    fn check_send(&self, i: i128) {
+        let of_interest = vec!["pn", "jg", "qx", "zt"]; // specific to my input
+        if !of_interest.contains(&self.name.as_str()) {
+            return;
+        }
+        for v in self.memory.values() {
+            match v {
+                &Pulse::Low(_) => {
+                    return;
+                }
+                _ => {}
+            }
+        }
+        println!("{} all set on iter {}", self.name, i);
     }
 }
 
@@ -234,7 +316,7 @@ fn push_button(modules: &mut HashMap<String, Module>) -> (usize, usize) {
     (low, high)
 }
 
-fn push_button_rx(modules: &mut HashMap<String, Module>) -> bool {
+fn push_button_rx(modules: &mut HashMap<String, Module>, i: i128) -> bool {
     let mut pulses_to_handle = VecDeque::new();
     pulses_to_handle.push_back((
         String::from("broadcaster"),
@@ -250,7 +332,7 @@ fn push_button_rx(modules: &mut HashMap<String, Module>) -> bool {
             _ => {}
         }
         if let Some(receiving_module) = modules.get_mut(&receiver) {
-            let next_pulses = receiving_module.handle_pulse(pulse);
+            let next_pulses = receiving_module.handle_pulse_iter(pulse, i);
             for np in next_pulses {
                 pulses_to_handle.push_back(np);
             }
@@ -282,19 +364,28 @@ fn solve_one(input: &Input) -> Result<Answer> {
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { modules } = input;
     let mut modules = modules.clone();
-    let (low, high) = push_button(&mut modules);
-    println!("low={}, high={}", low, high);
-    let mut looping = 0;
+    let mut i = 0;
     loop {
-        looping += 1;
-        if push_button_rx(&mut modules) {
+        i += 1;
+        // println!("{}", i);
+        if push_button_rx(&mut modules, i) {
             break;
         }
-        if looping % 10000 == 0 {
-            println!("{}", looping);
+        for v in modules.values() {
+            match &v {
+                Module::Conj(conjunction) => {
+                    //conjunction.print_memory();
+                    conjunction.check_send(i); // shows that lcm of 3847, 3923, 4001, 4091 = 247023644760071 is right!
+                }
+                _ => {}
+            }
         }
+        if i % 1000000 == 0 {
+            println!("{}", i);
+        }
+        // println!("------------------------------------------------------");
     }
-    Ok(Answer::Num(looping))
+    Ok(Answer::Num(i))
 }
 
 #[cfg(test)]

@@ -1,0 +1,32 @@
+rx is &jz => needs low
+&jz is &dh, &mk, &vf, &rn => sends low when (&dh, ...) high
+
+&dh is &pn => sends high when &pn low
+&mk is &jg => sends high when &mk low
+&vf is &qx => ...
+&rn is &zt => ...
+
+&pn is %nf, %kx, %rs, %dm, %qs, %rm, %gj => sends low when (%nf...) high
+&jg is %hc, %pt, %gv, %rc, %lv, %jd, %ks, %gz, %mr, %qh, %tb
+&qx is %qt, %pk, %dv, %xk, %td, %sl, %zm
+&zt is %mz, %dc, %bt, %cg, %jv, %pv, %db, %qf
+
+&qx is maybe a counter?
+qt xk
+ 1  0
+ 0  1
+ 
+
+
+
+
+11 <= 10 01 11, 3 presses = 2^len - 1
+
+tried lcm (2^7-1, 2^8-1, 2^11-1)
+tried prod (" , 2^7-1)
+
+tried 2^34 - 1 = 17179869183
+tried 2^33 - 1 = 8589934591
+tried lcm of 3847, 3923, 4001, 4091 = 247023644760071
+
+definitely larger than 184310000 presses
