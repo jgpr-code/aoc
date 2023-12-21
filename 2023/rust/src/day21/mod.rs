@@ -277,9 +277,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cmidright.0 + cmidright.1;
+                        sum += cmidright.0;
                     } else {
-                        sum += cmidright.1 + cmidright.0;
+                        sum += cmidright.1;
                     }
                 } else {
                     if be_safe {
@@ -298,9 +298,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cmidleft.0 + cmidleft.1;
+                        sum += cmidleft.0;
                     } else {
-                        sum += cmidleft.1 + cmidleft.0;
+                        sum += cmidleft.1;
                     }
                 }
                 continue;
@@ -329,9 +329,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotmid.0 + cbotmid.1;
+                        sum += cbotmid.0;
                     } else {
-                        sum += cbotmid.1 + cbotmid.0;
+                        sum += cbotmid.1;
                     }
                 } else {
                     if be_safe {
@@ -350,9 +350,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopmid.0 + ctopmid.1;
+                        sum += ctopmid.0;
                     } else {
-                        sum += ctopmid.1 + ctopmid.0;
+                        sum += ctopmid.1;
                     }
                 }
                 continue;
@@ -383,9 +383,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopleft.0 + ctopleft.1;
+                        sum += ctopleft.0;
                     } else {
-                        sum += ctopleft.1 + ctopleft.0;
+                        sum += ctopleft.1;
                     }
                 }
                 (false, true) => {
@@ -406,9 +406,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopright.0 + ctopright.1;
+                        sum += ctopright.0;
                     } else {
-                        sum += ctopright.1 + ctopright.0;
+                        sum += ctopright.1;
                     }
                 }
                 (true, false) => {
@@ -429,9 +429,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotleft.0 + cbotleft.1;
+                        sum += cbotleft.0;
                     } else {
-                        sum += cbotleft.1 + cbotleft.0;
+                        sum += cbotleft.1;
                     }
                 }
                 (true, true) => {
@@ -452,9 +452,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotright.0 + cbotright.1;
+                        sum += cbotright.0;
                     } else {
-                        sum += cbotright.1 + cbotright.0;
+                        sum += cbotright.1;
                     }
                 }
             }
@@ -463,6 +463,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
 
     // 54387012847523 still wrong :(
     // 54387012843743 still too low
+    // 27193506427523 still wrong...
     // 27193506423743 is wrong (still too low)
     // 21220183577171 is wrong!
     Ok(Answer::Num(sum))
