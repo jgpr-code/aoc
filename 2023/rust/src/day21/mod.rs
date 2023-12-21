@@ -17,11 +17,11 @@ struct Input {
     grid: Vec<Vec<char>>,
     rows: usize,
     cols: usize,
-    start: (i128, i128),
+    start: (i32, i32),
 }
 
-fn inside(r: i128, c: i128, rows: usize, cols: usize) -> bool {
-    r >= 0 && c >= 0 && r < rows as i128 && c < cols as i128
+fn inside(r: i32, c: i32, rows: usize, cols: usize) -> bool {
+    r >= 0 && c >= 0 && r < rows as i32 && c < cols as i32
 }
 
 fn parse_input(input: &str) -> Result<Input> {
@@ -32,7 +32,7 @@ fn parse_input(input: &str) -> Result<Input> {
     for r in 0..rows {
         for c in 0..cols {
             if grid[r][c] == 'S' {
-                start = (r as i128, c as i128);
+                start = (r as i32, c as i32);
             }
         }
     }
@@ -87,11 +87,11 @@ fn solve_one(input: &Input) -> Result<Answer> {
     Ok(Answer::Num(sum))
 }
 
-fn to_inside(r: i128, c: i128, rows: usize, cols: usize) -> (i128, i128) {
+fn to_inside(r: i32, c: i32, rows: usize, cols: usize) -> (i32, i32) {
     let mut nr = r;
     let mut nc = c;
-    let irows = rows as i128;
-    let icols = cols as i128;
+    let irows = rows as i32;
+    let icols = cols as i32;
     while nr < 0 {
         nr += irows;
     }
@@ -107,7 +107,7 @@ fn to_inside(r: i128, c: i128, rows: usize, cols: usize) -> (i128, i128) {
     (nr, nc)
 }
 
-fn count_grid(grid: &Vec<Vec<i128>>, req_steps: i128) -> i128 {
+fn count_grid(grid: &Vec<Vec<i32>>, req_steps: i32) -> i128 {
     let mut sum = 0;
     for r in 0..grid.len() {
         for c in 0..grid[0].len() {
@@ -119,15 +119,15 @@ fn count_grid(grid: &Vec<Vec<i128>>, req_steps: i128) -> i128 {
     sum
 }
 fn fill_grid(
-    starts: Vec<((i128, i128), i128)>,
+    starts: Vec<((i32, i32), i32)>,
     grid: &Vec<Vec<char>>,
     rows: usize,
     cols: usize,
-    req_steps: i128,
-) -> Option<Vec<Vec<i128>>> {
+    req_steps: i32,
+) -> Option<Vec<Vec<i32>>> {
     let dr = vec![-1, 0, 1, 0];
     let dc = vec![0, 1, 0, -1];
-    let mut reach_grid: Vec<Vec<i128>> = vec![vec![-1; cols]; rows];
+    let mut reach_grid: Vec<Vec<i32>> = vec![vec![-1; cols]; rows];
     let mut q = VecDeque::new();
     for (start, steps) in starts {
         if steps <= req_steps {
@@ -155,7 +155,7 @@ fn fill_grid(
     Some(reach_grid)
 }
 
-fn print_grid(grid: &Vec<Vec<i128>>) {
+fn print_grid(grid: &Vec<Vec<i32>>) {
     println!();
     for r in 0..grid.len() {
         for c in 0..grid[0].len() {
@@ -174,12 +174,16 @@ fn solve_two(input: &Input) -> Result<Answer> {
     } = input;
 
     // let req_steps = 26501365;
-    let req_steps = 5000;
+    let req_steps: i32 = 5000; //365;
 
     let mut seen_grids = HashSet::new();
 
+    // TODO
+    // coming from top,right,bot,left calc delta to top,right,bot,left and max
+    // speed up the process by a lot
+
     let mut sum = 0;
-    let reach_grid = fill_grid(vec![(*start, 0_i128)], grid, *rows, *cols, req_steps);
+    let reach_grid = fill_grid(vec![(*start, 0_i32)], grid, *rows, *cols, req_steps);
     let mut q = VecDeque::new();
     if let Some(grid) = reach_grid {
         let pos = (
@@ -209,7 +213,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
             let old_value = reach_grid[0][c];
             if old_value > -1 {
                 let nr = *rows - 1;
-                top_starts.push(((nr as i128, c as i128), old_value + 1));
+                top_starts.push(((nr as i32, c as i32), old_value + 1));
             }
         }
         let top_grid = fill_grid(top_starts, grid, *rows, *cols, req_steps);
@@ -234,7 +238,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
             let old_value = reach_grid[r][*cols - 1];
             if old_value > -1 {
                 let nc = 0;
-                right_starts.push(((r as i128, nc as i128), old_value + 1));
+                right_starts.push(((r as i32, nc as i32), old_value + 1));
             }
         }
         let right_grid = fill_grid(right_starts, grid, *rows, *cols, req_steps);
@@ -259,7 +263,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
             let old_value = reach_grid[*rows - 1][c];
             if old_value > -1 {
                 let nr = 0;
-                bottom_starts.push(((nr as i128, c as i128), old_value + 1));
+                bottom_starts.push(((nr as i32, c as i32), old_value + 1));
             }
         }
         let bottom_grid = fill_grid(bottom_starts, grid, *rows, *cols, req_steps);
@@ -284,7 +288,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
             let old_value = reach_grid[r][0];
             if old_value > -1 {
                 let nc = *cols - 1;
-                left_starts.push(((r as i128, nc as i128), old_value + 1));
+                left_starts.push(((r as i32, nc as i32), old_value + 1));
             }
         }
         let left_grid = fill_grid(left_starts, grid, *rows, *cols, req_steps);
