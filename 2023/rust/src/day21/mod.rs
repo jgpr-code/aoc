@@ -177,6 +177,21 @@ fn print_grid(grid: &Vec<Vec<i32>>) {
         println!();
     }
 }
+fn printit(grid: &Vec<Vec<i32>>) {
+    println!();
+    for r in 0..grid.len() {
+        for c in 0..grid[0].len() {
+            if grid[r][c] == -1 {
+                print!("#");
+            } else if grid[r][c] % 2 == 1 {
+                print!("O");
+            } else {
+                print!(".");
+            }
+        }
+        println!();
+    }
+}
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input {
@@ -233,7 +248,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
     for r in -30000..=30000 {
         for c in -30000..=30000 {
             if r == 0 && c == 0 {
-                sum += 3743; // use part_one why not?
+                let initial = fill_grid(vec![(*start, 0)], grid, *rows, *cols, req_steps).unwrap();
+                printit(&initial);
+                sum += count_grid(&initial, req_steps).1;
                 continue;
             }
             if r == 0 {
@@ -260,9 +277,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cmidright.0;
+                        sum += cmidright.0 + cmidright.1;
                     } else {
-                        sum += cmidright.1;
+                        sum += cmidright.1 + cmidright.0;
                     }
                 } else {
                     if be_safe {
@@ -281,9 +298,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cmidleft.0;
+                        sum += cmidleft.0 + cmidleft.1;
                     } else {
-                        sum += cmidleft.1;
+                        sum += cmidleft.1 + cmidleft.0;
                     }
                 }
                 continue;
@@ -312,9 +329,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotmid.0;
+                        sum += cbotmid.0 + cbotmid.1;
                     } else {
-                        sum += cbotmid.1;
+                        sum += cbotmid.1 + cbotmid.0;
                     }
                 } else {
                     if be_safe {
@@ -333,9 +350,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopmid.0;
+                        sum += ctopmid.0 + ctopmid.1;
                     } else {
-                        sum += ctopmid.1;
+                        sum += ctopmid.1 + ctopmid.0;
                     }
                 }
                 continue;
@@ -366,9 +383,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopleft.0;
+                        sum += ctopleft.0 + ctopleft.1;
                     } else {
-                        sum += ctopleft.1;
+                        sum += ctopleft.1 + ctopleft.0;
                     }
                 }
                 (false, true) => {
@@ -389,9 +406,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += ctopright.0;
+                        sum += ctopright.0 + ctopright.1;
                     } else {
-                        sum += ctopright.1;
+                        sum += ctopright.1 + ctopright.0;
                     }
                 }
                 (true, false) => {
@@ -412,9 +429,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotleft.0;
+                        sum += cbotleft.0 + cbotleft.1;
                     } else {
-                        sum += cbotleft.1;
+                        sum += cbotleft.1 + cbotleft.0;
                     }
                 }
                 (true, true) => {
@@ -435,15 +452,17 @@ fn solve_two(input: &Input) -> Result<Answer> {
                             sum += count.1;
                         }
                     } else if use_even {
-                        sum += cbotright.0;
+                        sum += cbotright.0 + cbotright.1;
                     } else {
-                        sum += cbotright.1;
+                        sum += cbotright.1 + cbotright.0;
                     }
                 }
             }
         }
     }
 
+    // 54387012847523 still wrong :(
+    // 54387012843743 still too low
     // 27193506423743 is wrong (still too low)
     // 21220183577171 is wrong!
     Ok(Answer::Num(sum))
