@@ -169,9 +169,9 @@ fn print_grid(grid: &Vec<Vec<i32>>) {
     for r in 0..grid.len() {
         for c in 0..grid[0].len() {
             if grid[r][c] == -1 {
-                print!("{}", format!("{:>4} ", '#'));
+                print!("{}", format!("{:>3} ", '#'));
             } else {
-                print!("{:>4} ", grid[r][c]);
+                print!("{:>3} ", grid[r][c]);
             }
         }
         println!();
@@ -201,8 +201,68 @@ fn solve_two(input: &Input) -> Result<Answer> {
         start,
     } = input;
 
+    // 618259911308724
+    // 618259911308724
+
     // let req_steps = 26501365;
+    // 26501365
     let req_steps: i32 = 26501365; //365;
+
+    let initial = fill_grid(vec![(*start, 0)], grid, *rows, *cols, req_steps).unwrap();
+    print_grid(&initial);
+    let mut even_corners = 0_usize;
+    let mut odd_corners = 0_usize;
+    let mut even_full = 0_usize;
+    let mut odd_full = 0_usize;
+    let mut hash_count = 0_usize;
+    for r in 0..*rows {
+        for c in 0..*cols {
+            let v = initial[r][c];
+            if v == -1 {
+                hash_count += 1;
+                continue;
+            }
+            if v % 2 == 0 {
+                even_full += 1;
+                if v > 65 {
+                    even_corners += 1;
+                }
+            } else {
+                odd_full += 1;
+                if v > 65 {
+                    odd_corners += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(hash_count + even_full + odd_full, 131 * 131);
+    println!("even corners {}", even_corners);
+    println!("odd corners {}", odd_corners);
+    println!("even {}", even_full);
+    println!("odd {}", odd_full);
+    // let even_corners = visited
+    //     .values()
+    //     .filter(|v| **v % 2 == 0 && **v > 65)
+    //     .count();
+    // let odd_corners = visited
+    //     .values()
+    //     .filter(|v| **v % 2 == 1 && **v > 65)
+    //     .count();
+
+    // let even_full = visited.values().filter(|v| **v % 2 == 0).count();
+    // let odd_full = visited.values().filter(|v| **v % 2 == 1).count();
+    let n = 202300;
+    assert_eq!(n, 202300);
+    let a = ((n + 1) * (n + 1)) * odd_full;
+    let b = (n * n) * even_full;
+    let c = (n + 1) * odd_corners;
+    let d = n * even_corners;
+    let e = a - c;
+    let ans = e + b + d;
+    println!("{}", ans); // 618261433219147 is right
+    let p2 = ((n + 1) * (n * 1)) * odd_full + (n * n) * even_full - (n + 1) * odd_corners
+        + n * even_corners;
+    println!("{}", p2);
 
     // TODO
     // coming from top,right,bot,left calc delta to top,right,bot,left and max
@@ -245,8 +305,8 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let cbotright = count_grid(&fbotright, manysteps);
 
     let mut sum = 0;
-    for r in -30000..=30000 {
-        for c in -30000..=30000 {
+    for r in -202301..=202301 {
+        for c in -202301..=202301 {
             if r == 0 && c == 0 {
                 let initial = fill_grid(vec![(*start, 0)], grid, *rows, *cols, req_steps).unwrap();
                 printit(&initial);
@@ -461,6 +521,9 @@ fn solve_two(input: &Input) -> Result<Answer> {
         }
     }
 
+    // 618261350479093 is also wrong...
+    // 618261433219147 is right
+    // 618259911308724 is wrong surprisingly
     // 54387012847523 still wrong :(
     // 54387012843743 still too low
     // 27193506427523 still wrong...
