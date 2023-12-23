@@ -1,4 +1,7 @@
-use std::{collections::HashSet, ops::Index};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    ops::{Add, Index},
+};
 
 use super::common::*;
 use anyhow::Result;
@@ -130,19 +133,131 @@ fn solve_two(input: &Input) -> Result<Answer> {
         start,
         goal,
     } = input;
-    let mut max_steps = 0;
-    let mut visited = HashSet::new();
-    visited.insert((start.0 as i32, start.1 as i32));
-    dfs(
+
+    let mut ngrid = grid.clone();
+    ngrid[start.0][start.1] = 'O';
+    let init_memo = to_memo_str(&ngrid);
+    let mut memo = HashMap::new();
+    //memo.insert(init_memo.clone(), 0);
+    let longest = dfs_faster(
+        *rows,
+        *cols,
+        init_memo,
+        &mut memo,
         (start.0 as i32, start.1 as i32),
         (goal.0 as i32, goal.1 as i32),
-        &mut visited,
         0,
-        &mut max_steps,
-        vec![],
-        grid,
     );
-    Ok(Answer::Num(max_steps as i128))
+    Ok(Answer::Num(longest as i128))
+}
+
+fn to_graph(grid: &Vec<Vec<char>>, start: (usize, usize), goal: (usize, usize)) {
+    // idea there are many narrow paths -> skip those completely and replace them with edges between junctions
+    // also just remove dead_ends
+    let working_grid = grid.clone();
+
+    // simple but slower idea
+    // first find all junction points
+    // then compute pairwise distances with bfs
+    let rows = grid.len();
+    let cols = grid[0].len();
+    let dr = vec![-1, 0, 1, 0];
+    let dc = vec![0, 1, 0, -1];
+    let mut junctions = vec![];
+    for r in 0..rows {
+        for c in 0..cols {
+            let mut count = 0;
+            for i in 0..4 {
+                let nr = r + dr[i];
+                let nc = c + dc[i];
+                if 0 <= nr && nr < rows && 0 <= nc && nc < cols && grid[nr][nc] != '#' {
+                    count += 1;
+                }
+            }
+            junctions.push((r, c));
+        }
+    }
+    println!("found {} junctions", junctions.len());
+    println!("{:?}", junctions);
+}
+
+fn print_grid(grid: &Vec<Vec<char>>) {
+    for r in 0..grid.len() {
+        for c in 0..grid[0].len() {
+            print!("{}", grid[r][c]);
+        }
+        println!();
+    }
+}
+
+fn dfs_faster(
+    rows: usize,
+    cols: usize,
+    current_memo: String,
+    memo: &mut HashMap<String, usize>,
+    pos: (i32, i32),
+    goal: (i32, i32),
+    current_steps: usize,
+) -> usize {
+    if memo.contains_key(&current_memo) {
+        return *memo.get(&current_memo).unwrap();
+    }
+    let mut grid = from_memo_str(current_memo.clone(), rows, cols);
+    // println!("----");
+    // print_grid(&grid);
+    if pos == goal {
+        println!("reached goal in {} steps", current_steps);
+        memo.insert(current_memo.clone(), current_steps);
+        return current_steps;
+    }
+    let mut longest = 0;
+    let dr = vec![-1, 0, 1, 0];
+    let dc = vec![0, 1, 0, -1];
+    for i in 0..4 {
+        let nr = pos.0 + dr[i];
+        let nc = pos.1 + dc[i];
+        if nr < 0
+            || nr >= rows as i32
+            || nc < 0
+            || nc >= cols as i32
+            || grid[nr as usize][nc as usize] == '#'
+        {
+            continue; //outside field or wall
+        }
+        let npos = (nr, nc);
+        if grid[nr as usize][nc as usize] == 'O' {
+            continue;
+        }
+        grid[nr as usize][nc as usize] = 'O';
+        let nmemo = to_memo_str(&grid);
+        let nlong = dfs_faster(rows, cols, nmemo, memo, npos, goal, current_steps + 1);
+        longest = std::cmp::max(longest, nlong);
+        grid[nr as usize][nc as usize] = '.';
+    }
+    memo.insert(current_memo, longest);
+    longest
+}
+
+fn to_memo_str(grid: &Vec<Vec<char>>) -> String {
+    let mut result = String::new();
+    for r in 0..grid.len() {
+        for c in 0..grid[0].len() {
+            result.push(grid[r][c]);
+        }
+    }
+    result
+}
+fn from_memo_str(s: String, rows: usize, cols: usize) -> Vec<Vec<char>> {
+    let mut result = vec![vec!['#'; cols]; rows];
+    let scs = s.chars().collect::<Vec<_>>();
+    let mut i = 0;
+    for r in 0..rows {
+        for c in 0..cols {
+            result[r][c] = scs[i];
+            i += 1;
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -169,7 +284,7 @@ mod tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(154));
         Ok(())
     }
     #[test]
