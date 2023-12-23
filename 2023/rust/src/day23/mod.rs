@@ -134,51 +134,169 @@ fn solve_two(input: &Input) -> Result<Answer> {
         goal,
     } = input;
 
-    let mut ngrid = grid.clone();
-    ngrid[start.0][start.1] = 'O';
-    let init_memo = to_memo_str(&ngrid);
-    let mut memo = HashMap::new();
-    //memo.insert(init_memo.clone(), 0);
-    let longest = dfs_faster(
-        *rows,
-        *cols,
-        init_memo,
-        &mut memo,
-        (start.0 as i32, start.1 as i32),
-        (goal.0 as i32, goal.1 as i32),
-        0,
-    );
-    Ok(Answer::Num(longest as i128))
+    let istart = (start.0 as i32, start.1 as i32);
+    let igoal = (goal.0 as i32, goal.1 as i32);
+    let graph = to_graph(grid, istart, igoal);
+    let mut max_steps = 0;
+    let mut visited = HashSet::new();
+    visited.insert(istart);
+    graph_dfs(&graph, istart, igoal, 0, &mut max_steps, &mut visited);
+
+    // let mut ngrid = grid.clone();
+    // ngrid[start.0][start.1] = 'O';
+    // let init_memo = to_memo_str(&ngrid);
+    // let mut memo = HashMap::new();
+    // //memo.insert(init_memo.clone(), 0);
+    // let longest = dfs_faster(
+    //     *rows,
+    //     *cols,
+    //     init_memo,
+    //     &mut memo,
+    //     (start.0 as i32, start.1 as i32),
+    //     (goal.0 as i32, goal.1 as i32),
+    //     0,
+    // );
+    Ok(Answer::Num(max_steps as i128))
 }
 
-fn to_graph(grid: &Vec<Vec<char>>, start: (usize, usize), goal: (usize, usize)) {
+fn graph_dfs(
+    graph: &HashMap<(i32, i32), Vec<((i32, i32), usize)>>,
+    at: (i32, i32),
+    goal: (i32, i32),
+    steps: usize,
+    max_steps: &mut usize,
+    visited: &mut HashSet<(i32, i32)>,
+) {
+    if at == goal {
+        *max_steps = std::cmp::max(*max_steps, steps);
+        return;
+    }
+    let neighs = graph.get(&at).unwrap();
+    for (neigh, neigh_steps) in neighs {
+        if !visited.contains(neigh) {
+            visited.insert(*neigh);
+            graph_dfs(graph, *neigh, goal, steps + neigh_steps, max_steps, visited);
+            visited.remove(neigh);
+        }
+    }
+}
+
+fn to_graph(
+    grid: &Vec<Vec<char>>,
+    start: (i32, i32),
+    goal: (i32, i32),
+) -> HashMap<(i32, i32), Vec<((i32, i32), usize)>> {
     // idea there are many narrow paths -> skip those completely and replace them with edges between junctions
     // also just remove dead_ends
-    let working_grid = grid.clone();
-
     // simple but slower idea
     // first find all junction points
     // then compute pairwise distances with bfs
-    let rows = grid.len();
-    let cols = grid[0].len();
+    let rows = grid.len() as i32;
+    let cols = grid[0].len() as i32;
     let dr = vec![-1, 0, 1, 0];
     let dc = vec![0, 1, 0, -1];
-    let mut junctions = vec![];
+    let mut junctions = vec![start];
     for r in 0..rows {
         for c in 0..cols {
+            if grid[r as usize][c as usize] == '#' {
+                continue; // skip walls
+            }
             let mut count = 0;
             for i in 0..4 {
                 let nr = r + dr[i];
                 let nc = c + dc[i];
-                if 0 <= nr && nr < rows && 0 <= nc && nc < cols && grid[nr][nc] != '#' {
+                if 0 <= nr
+                    && nr < rows
+                    && 0 <= nc
+                    && nc < cols
+                    && grid[nr as usize][nc as usize] != '#'
+                {
                     count += 1;
                 }
             }
-            junctions.push((r, c));
+            if count > 2 {
+                junctions.push((r, c));
+            }
         }
     }
+    junctions.push(goal);
     println!("found {} junctions", junctions.len());
     println!("{:?}", junctions);
+
+    let junctions_set = HashSet::from_iter(junctions.iter());
+
+    let mut graph: HashMap<(i32, i32), Vec<((i32, i32), usize)>> = HashMap::new(); // maps (r, c) -> Vec<((nr, nc), steps)>
+    let mut sum = 0;
+    for i in 0..junctions.len() {
+        let from = junctions[i];
+        for j in i + 1..junctions.len() {
+            let to = junctions[j];
+            if let Some(steps) = longest_junction_free_path(grid, from, to, &junctions_set) {
+                let ft = (to, steps);
+                let tf = (from, steps);
+                graph
+                    .entry(from)
+                    .and_modify(|v| v.push(ft))
+                    .or_insert(vec![ft]);
+                graph
+                    .entry(to)
+                    .and_modify(|v| v.push(tf))
+                    .or_insert(vec![tf]);
+                sum += steps;
+            }
+            println!(
+                "{:?} -> {:?} longest path = {:?}",
+                from,
+                to,
+                longest_junction_free_path(grid, from, to, &junctions_set)
+            )
+        }
+    }
+    println!("sum {}", sum);
+    graph
+}
+fn longest_junction_free_path(
+    grid: &Vec<Vec<char>>,
+    from: (i32, i32),
+    to: (i32, i32),
+    junctions: &HashSet<&(i32, i32)>,
+) -> Option<usize> {
+    let rows = grid.len() as i32;
+    let cols = grid[0].len() as i32;
+    let dr = vec![-1, 0, 1, 0];
+    let dc = vec![0, 1, 0, -1];
+    let mut q = VecDeque::new();
+    let mut visited = HashSet::new();
+    let mut longest = None;
+    q.push_back((from, 0));
+    visited.insert(from);
+    while let Some((pos, steps)) = q.pop_front() {
+        if pos == to {
+            if let Some(l) = longest {
+                longest = Some(std::cmp::max(l, steps));
+            } else {
+                longest = Some(steps);
+            }
+        } else {
+            for i in 0..4 {
+                let nr = pos.0 + dr[i];
+                let nc = pos.1 + dc[i];
+                if 0 <= nr
+                    && nr < rows
+                    && 0 <= nc
+                    && nc < cols
+                    && grid[nr as usize][nc as usize] != '#'
+                {
+                    let npos = (nr, nc);
+                    if !visited.contains(&npos) && (npos == to || !junctions.contains(&npos)) {
+                        visited.insert(npos);
+                        q.push_back((npos, steps + 1));
+                    }
+                }
+            }
+        }
+    }
+    longest
 }
 
 fn print_grid(grid: &Vec<Vec<char>>) {
