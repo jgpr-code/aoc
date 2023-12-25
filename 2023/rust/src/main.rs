@@ -27,7 +27,7 @@ mod common;
 // mod day21;
 // mod day22;
 // mod day23;
-// mod day24;
+mod day24;
 mod day25;
 
 use common::*;
@@ -93,8 +93,8 @@ fn main() {
     // solver.add(22, 2, day22::part_two);
     // solver.add(23, 1, day23::part_one);
     // solver.add(23, 2, day23::part_two);
-    // solver.add(24, 1, day24::part_one);
-    // solver.add(24, 2, day24::part_two);
+    solver.add(24, 1, day24::part_one);
+    solver.add(24, 2, day24::part_two);
     solver.add(25, 1, day25::part_one);
     solver.add(25, 2, day25::part_two);
     solver.solve(opt);

@@ -114,6 +114,26 @@ impl Hailstone {
             self.pos.2 + time * self.delta.2,
         )
     }
+    fn print_hailstone_equation(&self, time_subscript: usize) {
+        // use for https://jfmc.github.io/z3-play/
+        // (assert (= (+ x (* u t{})) (+ {} (* {} t{})) ))
+        //
+        println!(
+            // "x+u*t{} = {}+{}*t{} ;",
+            "(assert (= (+ x (* u t{})) (+ {} (* {} t{})) ))",
+            time_subscript, self.pos.0, self.delta.0, time_subscript
+        );
+        println!(
+            // "y+v*t{} = {}+{}*t{} ;",
+            "(assert (= (+ y (* v t{})) (+ {} (* {} t{})) ))",
+            time_subscript, self.pos.1, self.delta.1, time_subscript
+        );
+        println!(
+            // "z+w*t{} = {}+{}*t{} ;",
+            "(assert (= (+ z (* w t{})) (+ {} (* {} t{})) ))",
+            time_subscript, self.pos.2, self.delta.2, time_subscript
+        );
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
@@ -171,6 +191,60 @@ fn solve_two(input: &Input) -> Result<Answer> {
             }
         }
     }
+    for i in 0..3 {
+        hailstones[i].print_hailstone_equation(i);
+    }
+
+    // (declare-const x Int)
+    // (declare-const y Int)
+    // (declare-const z Int)
+    // (declare-const u Int)
+    // (declare-const v Int)
+    // (declare-const w Int)
+    // (declare-const t0 Int)
+    // (declare-const t1 Int)
+    // (declare-const t2 Int)
+
+    // (assert (>= t0 0))
+    // (assert (>= t1 0))
+    // (assert (>= t2 0))
+    // (assert (>= u (- 500)))
+    // (assert (>= v (- 500)))
+    // (assert (>= w (- 500)))
+    // (assert (<= u 500))
+    // (assert (<= v 500))
+    // (assert (<= w 500))
+    // (assert (= (+ x (* u t0)) (+ 213004023520250 (* 118 t0)) ))
+    // (assert (= (+ y (* v t0)) (+ 255007063487325 (* 41 t0)) ))
+    // (assert (= (+ z (* w t0)) (+ 286351797522218 (* (- 64) t0)) ))
+    // (assert (= (+ x (* u t1)) (+ 488850102886640 (* (- 73) t1)) ))
+    // (assert (= (+ y (* v t1)) (+ 357544262814165 (* (- 83) t1)) ))
+    // (assert (= (+ z (* w t1)) (+ 194409329434718 (* 182 t1)) ))
+    // (assert (= (+ x (* u t2)) (+ 193401607687542 (* 133 t2)) ))
+    // (assert (= (+ y (* v t2)) (+ 253348355203801 (* 51 t2)) ))
+    // (assert (= (+ z (* w t2)) (+ 213339230780036 (* 98 t2)) ))
+
+    //     sat
+    // (
+    //   (define-fun w () Int
+    //     197)
+    //   (define-fun y () Int
+    //     263917577518425)
+    //   (define-fun x () Int
+    //     133619443970450)
+    //   (define-fun t2 () Int
+    //     330288197332)
+    //   (define-fun z () Int
+    //     180640699244168)
+    //   (define-fun t1 () Int
+    //     917908679370)
+    //   (define-fun t0 () Int
+    //     405023365050)
+    //   (define-fun u () Int
+    //     314)
+    //   (define-fun v () Int
+    //     19)
+    // )
 
     // 2 unknowns => 2 equations
     // initial unknowns are x,y,z,dx,dy,dz
@@ -187,18 +261,18 @@ fn solve_two(input: &Input) -> Result<Answer> {
     // a1 + n1*da1 = x + m1*dx => n1 = (x - a1 + m1*dx)/da1
     // b1 + n1*db1 = y + m1*dy => n1 = (y - b1 + m1*dy)/db1
     // c1 + n1*dc1 = z + m1*dz => n1 = (z - c1 + m1*dz)/dc1
-    // => m1 
+    // => m1
     // => Intersection at (a1,b1,c1) + n1*(da1,db1,dc1) = A1
     // (a2,b2,c2) + n2*(da2,db2,dc2) = (x,y,z) + m2*(dx,dy,dz)
     // => Intersection at (a2,b2,c2) + n2*(da2,db2,dc2) = A2
-    // A1 - A2 = r12*(dx,dy,dz) => 
+    // A1 - A2 = r12*(dx,dy,dz) =>
     // do the same for A3 - A4 = r34*(dx,dy,dz)
 
     // no hailstones are parallel good to know :)
 
-    let sum = input.xy_crossings_in_area(7.0, 27.0);
-    println!("sum = {}", sum);
-    Ok(Answer::Num(0))
+    // x + y + z
+    let answer = 133619443970450 + 263917577518425 + 180640699244168;
+    Ok(Answer::Num(answer))
 }
 
 #[cfg(test)]
