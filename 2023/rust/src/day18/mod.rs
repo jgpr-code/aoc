@@ -192,40 +192,40 @@ impl Dig {
             vert_lines,
         }
     }
-    fn new_old(dig_plan: &Vec<DigInstr>) -> Self {
-        let new_instr: Vec<(char, i128)> = dig_plan
-            .iter()
-            .map(|dp| (dp.dir, dp.amount as i128))
-            .collect();
-        let mut hori_lines = Vec::new();
-        let mut vert_lines = Vec::new();
-        let mut mapper = HashMap::new();
-        mapper.insert('U', (-1, 0, true));
-        mapper.insert('R', (0, 1, false));
-        mapper.insert('D', (1, 0, true));
-        mapper.insert('L', (0, -1, false));
-        let mut pos = (0, 0);
-        for (dir, amount) in new_instr.iter() {
-            let delta = mapper.get(dir).unwrap();
-            let start = pos;
-            let end = (pos.0 + delta.0 * amount, pos.1 + delta.1 * amount);
-            pos = end;
-            if delta.2 {
-                vert_lines.push(DigLine { start, end });
-            } else {
-                hori_lines.push(DigLine { start, end });
-            }
-        }
-        vert_lines.sort_by(|a, b| {
-            assert_eq!(a.start.1, a.end.1);
-            assert_eq!(b.start.1, b.end.1);
-            a.start.1.cmp(&b.start.1)
-        });
-        Dig {
-            hori_lines,
-            vert_lines,
-        }
-    }
+    // fn new_old(dig_plan: &Vec<DigInstr>) -> Self {
+    //     let new_instr: Vec<(char, i128)> = dig_plan
+    //         .iter()
+    //         .map(|dp| (dp.dir, dp.amount as i128))
+    //         .collect();
+    //     let mut hori_lines = Vec::new();
+    //     let mut vert_lines = Vec::new();
+    //     let mut mapper = HashMap::new();
+    //     mapper.insert('U', (-1, 0, true));
+    //     mapper.insert('R', (0, 1, false));
+    //     mapper.insert('D', (1, 0, true));
+    //     mapper.insert('L', (0, -1, false));
+    //     let mut pos = (0, 0);
+    //     for (dir, amount) in new_instr.iter() {
+    //         let delta = mapper.get(dir).unwrap();
+    //         let start = pos;
+    //         let end = (pos.0 + delta.0 * amount, pos.1 + delta.1 * amount);
+    //         pos = end;
+    //         if delta.2 {
+    //             vert_lines.push(DigLine { start, end });
+    //         } else {
+    //             hori_lines.push(DigLine { start, end });
+    //         }
+    //     }
+    //     vert_lines.sort_by(|a, b| {
+    //         assert_eq!(a.start.1, a.end.1);
+    //         assert_eq!(b.start.1, b.end.1);
+    //         a.start.1.cmp(&b.start.1)
+    //     });
+    //     Dig {
+    //         hori_lines,
+    //         vert_lines,
+    //     }
+    // }
     fn is_between(r: i128, s: i128, e: i128) -> bool {
         let mut s = s;
         let mut e = e;
