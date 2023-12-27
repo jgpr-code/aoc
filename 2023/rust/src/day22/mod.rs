@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use super::common::*;
 use anyhow::Result;
@@ -98,12 +98,53 @@ fn solve_one(input: &Input) -> Result<Answer> {
             safe_disintegrate += 1;
         }
     }
-    // 517 was wrong (too high)
+    // 517 was wrong (too high) because I didn't sort the input by height first...
     Ok(Answer::Num(safe_disintegrate))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    todo!()
+    let Input { bricks } = input;
+    let mut plays: HashMap<(i128, i128), (i128, usize)> = HashMap::new();
+    let mut supporters = vec![0_usize; bricks.len()];
+    let mut supports: Vec<Vec<usize>> = vec![Vec::new(); bricks.len()];
+    for (i, brick) in bricks.iter().enumerate() {
+        let xy_cover = brick.xy_cover();
+        let mut max_height = 0;
+        for xy in xy_cover.iter() {
+            if let Some((height, _)) = plays.get(xy) {
+                max_height = std::cmp::max(max_height, *height);
+            }
+        }
+        for xy in xy_cover.iter() {
+            if let Some(&(height, block_idx)) = plays.get(xy) {
+                if height == max_height {
+                    if !supports[block_idx].contains(&i) {
+                        supports[block_idx].push(i);
+                        supporters[i] += 1;
+                    }
+                }
+            }
+            plays.insert(*xy, (max_height + brick.height(), i));
+        }
+    }
+    let mut total_falling = 0;
+    for i in 0..bricks.len() {
+        let mut current_supporters = supporters.clone();
+        let mut disintegrate_queue = VecDeque::new();
+        let mut falling = -1; // ignore first disintegration!
+        disintegrate_queue.push_back(i);
+        while let Some(i) = disintegrate_queue.pop_front() {
+            falling += 1;
+            for &supportee in supports[i].iter() {
+                current_supporters[supportee] -= 1;
+                if current_supporters[supportee] == 0 {
+                    disintegrate_queue.push_back(supportee);
+                }
+            }
+        }
+        total_falling += falling;
+    }
+    Ok(Answer::Num(total_falling as i128))
 }
 
 #[cfg(test)]
@@ -130,13 +171,13 @@ mod tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(7));
         Ok(())
     }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(102770));
         Ok(())
     }
 
