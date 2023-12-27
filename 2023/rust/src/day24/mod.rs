@@ -3,15 +3,13 @@ use anyhow::Result;
 
 pub fn part_one(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
-    solve_one(&input)
+    solve_one(&input, 200000000000000.0, 400000000000000.0)
 }
 
 pub fn part_two(input: &str) -> Result<Answer> {
     let input = parse_input(input)?;
     solve_two(&input)
 }
-
-// min x, y at least 200000000000000 at most 400000000000000 => i128
 
 struct Input {
     hailstones: Vec<Hailstone>,
@@ -32,7 +30,7 @@ impl Input {
                     Intersection::None => {
                         // println!("no intersection");
                     }
-                    Intersection::PastPoint(_, (a, b)) => {
+                    Intersection::PastPoint(_, (_a, _b)) => {
                         // match (a, b) {
                         //     (true, true) => println!("intersection in past for both"),
                         //     (true, false) => println!("intersection in past for A"),
@@ -107,13 +105,13 @@ impl Hailstone {
             Intersection::Point((ix, iy))
         }
     }
-    fn pos_at_time(&self, time: i128) -> (i128, i128, i128) {
-        (
-            self.pos.0 + time * self.delta.0,
-            self.pos.1 + time * self.delta.1,
-            self.pos.2 + time * self.delta.2,
-        )
-    }
+    // fn pos_at_time(&self, time: i128) -> (i128, i128, i128) {
+    //     (
+    //         self.pos.0 + time * self.delta.0,
+    //         self.pos.1 + time * self.delta.1,
+    //         self.pos.2 + time * self.delta.2,
+    //     )
+    // }
     fn print_hailstone_equation(&self, time_subscript: usize) {
         // use for https://jfmc.github.io/z3-play/
         // (assert (= (+ x (* u t{})) (+ {} (* {} t{})) ))
@@ -158,10 +156,8 @@ fn parse_input(input: &str) -> Result<Input> {
     Ok(Input { hailstones })
 }
 
-fn solve_one(input: &Input) -> Result<Answer> {
-    let sum = input.xy_crossings_in_area(7.0, 27.0);
-    println!("sum = {}", sum);
-    let answer = input.xy_crossings_in_area(200000000000000.0, 400000000000000.0);
+fn solve_one(input: &Input, min: f64, max: f64) -> Result<Answer> {
+    let answer = input.xy_crossings_in_area(min, max);
     Ok(Answer::Num(answer as i128))
 }
 
@@ -285,27 +281,29 @@ mod tests {
     static INPUT: LazyLock<String> = local_file!("input.txt");
 
     #[test]
-    fn test_one() -> Result<()> {
-        let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
+    fn test_solve_one() -> Result<()> {
+        let input = parse_input(&TEST)?;
+        let answer = solve_one(&input, 7.0, 27.0)?;
+        assert_eq!(answer, Answer::Num(2));
         Ok(())
     }
     #[test]
     fn part_one() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(13965));
         Ok(())
     }
-    #[test]
-    fn test_two() -> Result<()> {
-        let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(-1));
-        Ok(())
-    }
+    // TODO: the general case is not implemented yet
+    // #[test]
+    // fn test_two() -> Result<()> {
+    //     let answer = super::part_two(&TEST)?;
+    //     assert_eq!(answer, Answer::Num(-1));
+    //     Ok(())
+    // }
     #[test]
     fn part_two() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(-1));
+        assert_eq!(answer, Answer::Num(578177720733043));
         Ok(())
     }
 
