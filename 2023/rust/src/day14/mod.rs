@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Add};
+use std::collections::HashMap;
 
 use super::common::*;
 use anyhow::Result;
@@ -37,14 +37,14 @@ fn compute_board_load(board: &Vec<Vec<char>>) -> usize {
     load
 }
 
-fn print_board(board: &Vec<Vec<char>>) {
-    for r in 0..board.len() {
-        for c in 0..board[0].len() {
-            print!("{}", board[r][c]);
-        }
-        println!();
-    }
-}
+// fn print_board(board: &Vec<Vec<char>>) {
+//     for r in 0..board.len() {
+//         for c in 0..board[0].len() {
+//             print!("{}", board[r][c]);
+//         }
+//         println!();
+//     }
+// }
 
 fn hash_board(board: &Vec<Vec<char>>) -> String {
     let mut hash = String::new();
