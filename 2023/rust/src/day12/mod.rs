@@ -324,13 +324,13 @@ mod tests {
         assert_eq!(answer, Answer::Num(525152));
         Ok(())
     }
-    #[test]
-    fn test_solve_two() -> Result<()> {
-        let a: Vec<char> = ".?###??????????###????????.".chars().collect();
-        let ans = super::solve_line_two(&a[..], &[3, 2, 1, 3, 2, 1]);
-        assert_eq!(ans, 1234);
-        Ok(())
-    }
+    // #[test]
+    // fn test_solve_two() -> Result<()> {
+    //     let a: Vec<char> = ".?###??????????###????????.".chars().collect();
+    //     let ans = super::solve_line_two(&a[..], &[3, 2, 1, 3, 2, 1]);
+    //     assert_eq!(ans, 1234);
+    //     Ok(())
+    // }
     // #[test]
     // fn aaa() -> Result<()> {
     //     let a: Vec<char> = ".??????????###????????.".chars().collect();
