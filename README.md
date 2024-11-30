@@ -1,28 +1,17 @@
 # aoc
 
-Solutions for Advent of Code
-
-## What was wrong with AdventOfCode Repository
-
-The core idea to have a structure like this:
-
-- ``AoC_<Year>`` contains the entries:
-  - ``Day<dd>_<Name>_<Lang>`` which always is its own project!
-
-was flawed.
-
-Its main downside is that the individual projects might use some 3rd party libraries
-(regex, anyhow, lazy_static to just name a few for Rust) and those can consume a lot
-of memory when all the individual projects are compiled.
+My solutions for Advent of Code.
 
 ## Structure
 
-- ``<Year>`` contains:
-  - ``<Lang>`` contains:
-    - ``<main>.<ext>`` the main entry point for execution
-    - ``day<dd>`` folder or module for the individual days used by main (exact structure might be language dependent, let's see)
+Each ``<Year>`` has a ``<Lang>`` folder/project. The structure of the folder depends on the language
+used, but must not require any dependencies from outside.
 
-## Minimal Requirements for main
+### Rust
+
+In Rust the best setup is to use a workspace, with one or more shared library crates and binary crates for each individual day.
+
+## Minimal Requirements for projects
 
 - Cli program that supports:
   - running a single day
@@ -30,16 +19,19 @@ of memory when all the individual projects are compiled.
   - running all days
   - measure performance for all days or selection or single days (in some way)
 
-e.g.
+e.g. for running day 25:
 
 ```bash
-main 25 <
+  main 25
 ```
 
-runs day 25
-
-## Focus on language
+## Languages of interest to me (in no particular order)
 
 - Rust
 - C++
 - Haskell
+- Kotlin
+- C#
+- Python
+- Typescript
+- Clojure
