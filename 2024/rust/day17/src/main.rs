@@ -49,7 +49,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
 // cargo test one [-r]
 // cargo test two [-r]
 #[cfg(test)]
-mod day01_tests {
+mod day17_tests {
     use super::*;
     use common::test_utils::*;
     use std::sync::LazyLock;
