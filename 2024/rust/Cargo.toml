@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "day01",
+    "common",
+]
+
+resolver = "2"
+
+[workspace.dependencies]
+anyhow = "1.0.79"
+regex = "1.10.3"
