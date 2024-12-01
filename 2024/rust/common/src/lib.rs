@@ -1,7 +1,6 @@
 pub use regex;
 use std::fmt::Display;
 
-// the return type for parts sometime its Numbers sometimes its Strings
 #[derive(Debug, PartialEq, Eq)]
 pub enum Answer {
     Num(i128),
@@ -21,10 +20,8 @@ impl Display for Answer {
 #[macro_export]
 macro_rules! regx {
     ($re:literal) => {{
-        static RE: std::sync::LazyLock<$crate::regex::Regex> = std::sync::LazyLock::new(|| {
-            // println!("initializing regex {}", $re);
-            $crate::regex::Regex::new($re).unwrap()
-        });
+        static RE: std::sync::LazyLock<$crate::regex::Regex> =
+            std::sync::LazyLock::new(|| $crate::regex::Regex::new($re).unwrap());
         &RE
     }};
 }
@@ -41,7 +38,7 @@ pub mod test_utils {
     #[macro_export]
     macro_rules! local_file {
         ($file:literal) => {
-            LazyLock::new(|| common::test_utils::read_from_file(&format!("src/{}", $file)))
+            LazyLock::new(|| common::test_utils::read_from_file(&format!("{}", $file)))
         };
     }
     // re-export macro such that test_utils::local_file path can be used.
