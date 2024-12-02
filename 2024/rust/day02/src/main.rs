@@ -22,22 +22,55 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
+struct Report {
+    levels: Vec<i128>,
+    deltas: Vec<i128>,
+}
+
+impl From<&str> for Report {
+    fn from(line: &str) -> Self {
+        let mut last_n: Option<i128> = None;
+        let mut levels = Vec::new();
+        let mut deltas = Vec::new();
+        for nstr in line.split(" ") {
+            let n = i128::from_str_radix(nstr, 10).unwrap(); // ugly unwrap!
+            if let Some(ln) = last_n {
+                deltas.push(n - ln);
+            }
+            last_n = Some(n);
+            levels.push(n);
+        }
+        Self { levels, deltas }
+    }
+}
+
+impl Report {
+    fn is_safe(&self) -> bool {
+        print!("{:?}", self.levels);
+        let verdict = self.deltas.iter().all(|&n| {
+            let n_abs = i128::abs(n);
+            1 <= n_abs && n_abs <= 3
+        }) && (self.deltas.iter().all(|&n| i128::signum(n) == 1)
+            || self.deltas.iter().all(|&n| i128::signum(n) == -1));
+        println!(" -> {}", verdict);
+        verdict
+    }
+}
+
 struct Input {
-    nums: Vec<i128>,
+    reports: Vec<Report>,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let reports: Vec<_> = input.lines().map(|l| Report::from(l)).collect();
+    Ok(Input { reports })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input { reports } = input;
+    Ok(Answer::Num(
+        reports.iter().filter(|r| r.is_safe()).count().try_into()?,
+    ))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +94,12 @@ mod day02_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(2));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(299));
         Ok(())
     }
     #[bench]
