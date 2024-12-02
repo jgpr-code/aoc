@@ -46,14 +46,50 @@ impl From<&str> for Report {
 
 impl Report {
     fn is_safe(&self) -> bool {
-        print!("{:?}", self.levels);
+        // print!("{:?}", self.levels);
         let verdict = self.deltas.iter().all(|&n| {
             let n_abs = i128::abs(n);
             1 <= n_abs && n_abs <= 3
         }) && (self.deltas.iter().all(|&n| i128::signum(n) == 1)
             || self.deltas.iter().all(|&n| i128::signum(n) == -1));
-        println!(" -> {}", verdict);
+        // println!(" -> {}", verdict);
         verdict
+    }
+    fn is_dampened_safe(&self) -> bool {
+        for skip_idx in 0..self.levels.len() {
+            if self.check_skipping(skip_idx) {
+                // println!("{:?} skip:{}", self.levels, skip_idx);
+                return true;
+            }
+        }
+        false
+    }
+    fn check_skipping(&self, skip_idx: usize) -> bool {
+        let mut signum = 0;
+        let mut last_n: Option<i128> = None;
+        for (i, &n) in self.levels.iter().enumerate() {
+            if i == skip_idx {
+                continue;
+            }
+            if let Some(ln) = last_n {
+                let delta = n - ln;
+                let abs_delta = i128::abs(delta);
+                if !(1 <= abs_delta && abs_delta <= 3) {
+                    return false;
+                }
+                let delta_signum = i128::signum(delta);
+                if delta_signum == 0 {
+                    return false;
+                }
+                if signum == 0 {
+                    signum = delta_signum;
+                } else if signum != delta_signum {
+                    return false;
+                }
+            }
+            last_n = Some(n);
+        }
+        true
     }
 }
 
@@ -74,8 +110,19 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { reports } = input;
+    let mut count = 0;
+    for report in reports {
+        if report.is_safe() {
+            count += 1;
+            continue;
+        }
+        if report.is_dampened_safe() {
+            count += 1;
+        }
+    }
+
+    Ok(Answer::Num(count))
 }
 
 // Quickly obtain answers by running
@@ -109,7 +156,7 @@ mod day02_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(4));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
