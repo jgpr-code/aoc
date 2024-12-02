@@ -27,20 +27,22 @@ struct Report {
     deltas: Vec<i128>,
 }
 
-impl From<&str> for Report {
-    fn from(line: &str) -> Self {
+impl TryFrom<&str> for Report {
+    type Error = core::num::ParseIntError;
+
+    fn try_from(line: &str) -> std::result::Result<Self, Self::Error> {
         let mut last_n: Option<i128> = None;
         let mut levels = Vec::new();
         let mut deltas = Vec::new();
         for nstr in line.split(" ") {
-            let n = i128::from_str_radix(nstr, 10).unwrap(); // ugly unwrap!
+            let n = i128::from_str_radix(nstr, 10)?;
             if let Some(ln) = last_n {
                 deltas.push(n - ln);
             }
             last_n = Some(n);
             levels.push(n);
         }
-        Self { levels, deltas }
+        Ok(Self { levels, deltas })
     }
 }
 
@@ -98,7 +100,10 @@ struct Input {
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    let reports: Vec<_> = input.lines().map(|l| Report::from(l)).collect();
+    let reports: Vec<_> = input
+        .lines()
+        .map(|l| Report::try_from(l))
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(Input { reports })
 }
 
@@ -161,7 +166,7 @@ mod day02_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(364));
         Ok(())
     }
     #[bench]
