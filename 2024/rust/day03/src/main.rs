@@ -2,6 +2,7 @@
 extern crate test;
 
 use anyhow::Result;
+use common::regx;
 use common::Answer;
 use std::io;
 
@@ -23,21 +24,24 @@ pub fn part_two(input: &str) -> Result<Answer> {
 }
 
 struct Input {
-    nums: Vec<i128>,
+    lines: Vec<String>,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let lines = input.lines().map(|l| String::from(l)).collect();
+    Ok(Input { lines })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input { lines } = input;
+    let mul_re = regx!(r"mul\((\d{1,3}),(\d{1,3})\)");
+    let mut sum = 0;
+    for line in lines {
+        for (_, [a, b]) in mul_re.captures_iter(line).map(|c| c.extract()) {
+            sum += i128::from_str_radix(a, 10)? * i128::from_str_radix(b, 10)?;
+        }
+    }
+    Ok(Answer::Num(sum))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +65,12 @@ mod day03_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(161));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(174336360));
         Ok(())
     }
     #[bench]
