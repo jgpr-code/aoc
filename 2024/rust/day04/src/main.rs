@@ -78,6 +78,52 @@ impl Input {
         }
         true
     }
+    fn count_x_mas(&self) -> i128 {
+        let mut count = 0;
+        for row in 0..self.grid.len() {
+            for col in 0..self.grid[0].len() {
+                if self.is_x_mas(row, col) {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+    fn is_x_mas(&self, row: usize, col: usize) -> bool {
+        // M.S  M.M  S.M  S.S
+        // .A.  .A.  .A.  .A.
+        // M.S  S.S  S.M  M.M
+        let x_mas = vec!["M.S.A.M.S", "M.M.A.S.S", "S.M.A.S.M", "S.S.A.M.M"];
+        let x_mas: Vec<Vec<char>> = x_mas
+            .iter()
+            .map(|s| s.chars().collect::<Vec<char>>())
+            .collect();
+        for xmas in x_mas.iter() {
+            if self.check_xmas(row, col, xmas) {
+                return true;
+            }
+        }
+        false
+    }
+    fn check_xmas(&self, row: usize, col: usize, xmas: &[char]) -> bool {
+        for xmas_row in 0..3 {
+            for xmas_col in 0..3 {
+                let check_row = (row + xmas_row) as i128;
+                let check_col = (col + xmas_col) as i128;
+                if !self.valid_index(check_row, check_col) {
+                    return false;
+                }
+                let xmas_idx = (xmas_row * 3 + xmas_col) as usize;
+                if xmas[xmas_idx] == '.' {
+                    continue;
+                }
+                if xmas[xmas_idx] != self.grid[check_row as usize][check_col as usize] {
+                    return false;
+                }
+            }
+        }
+        true
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
@@ -91,7 +137,7 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let _unused = input;
-    Ok(Answer::Num(0))
+    Ok(Answer::Num(input.count_x_mas()))
 }
 
 // Quickly obtain answers by running
@@ -125,12 +171,12 @@ mod day04_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(9));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(1939));
         Ok(())
     }
     #[bench]
