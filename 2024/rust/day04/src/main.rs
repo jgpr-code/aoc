@@ -23,21 +23,70 @@ pub fn part_two(input: &str) -> Result<Answer> {
 }
 
 struct Input {
-    nums: Vec<i128>,
+    grid: Vec<Vec<char>>,
+}
+
+impl Input {
+    fn count_xmas(&self) -> i128 {
+        let mut counted = 0;
+        for row in 0..self.grid.len() {
+            for col in 0..self.grid[0].len() {
+                let c = self.grid[row][col];
+                if c == 'X' {
+                    counted += self.count_from(row, col, "XMAS");
+                }
+                if c == 'S' {
+                    counted += self.count_from(row, col, "SAMX");
+                }
+            }
+        }
+        counted / 2
+    }
+    fn count_from(&self, row: usize, col: usize, word_to_count: &str) -> i128 {
+        // X <-> M <-> A <-> S
+        let mut count = 0;
+        for dir_idx in 0..9 {
+            if self.search_in_direction(row, col, word_to_count, dir_idx) {
+                count += 1;
+            }
+        }
+        count
+    }
+    fn valid_index(&self, row: i128, col: i128) -> bool {
+        0 <= row && row < self.grid.len() as i128 && 0 <= col && col < self.grid[0].len() as i128
+    }
+    fn search_in_direction(
+        &self,
+        row: usize,
+        col: usize,
+        word_to_count: &str,
+        dir_idx: usize,
+    ) -> bool {
+        let drow = vec![-1, -1, -1, 0, 0, 0, 1, 1, 1];
+        let dcol = vec![-1, 0, 1, -1, 0, 1, -1, 0, 1];
+        let mut irow = row as i128;
+        let mut icol = col as i128;
+        for c in word_to_count.chars() {
+            if !self.valid_index(irow, icol) {
+                return false;
+            }
+            if self.grid[irow as usize][icol as usize] != c {
+                return false;
+            }
+            irow += drow[dir_idx];
+            icol += dcol[dir_idx];
+        }
+        true
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let grid: Vec<Vec<char>> = input.lines().map(|l| l.chars().collect()).collect();
+    Ok(Input { grid })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    Ok(Answer::Num(input.count_xmas()))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +110,12 @@ mod day04_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(18));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(2547));
         Ok(())
     }
     #[bench]
