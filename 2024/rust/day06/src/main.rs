@@ -71,6 +71,7 @@ mod day06_tests {
     }
     #[bench]
     fn part_one(b: &mut Bencher) {
+        part_one_impl().expect("Error");
         b.iter(|| part_one_impl())
     }
     #[test]
@@ -86,6 +87,7 @@ mod day06_tests {
     }
     #[bench]
     fn part_two(b: &mut Bencher) {
+        part_two_impl().expect("Error");
         b.iter(|| part_two_impl())
     }
 }
