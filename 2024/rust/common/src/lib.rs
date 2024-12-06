@@ -31,8 +31,9 @@ pub mod test_utils {
     use std::fs;
     pub fn read_from_file(filename: &str) -> String {
         println!("reading {}", filename);
-        fs::read_to_string(filename)
-            .unwrap_or_else(|msg| panic!("error reading {}: {}", filename, msg))
+        let result = fs::read_to_string(filename)
+            .unwrap_or_else(|msg| panic!("error reading {}: {}", filename, msg));
+        result.replace("\r\n", "\n")
     }
 
     #[macro_export]
