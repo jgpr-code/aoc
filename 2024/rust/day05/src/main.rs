@@ -34,14 +34,14 @@ impl Input {
     fn is_valid_update(&self, update: &[i128]) -> Result<bool> {
         // for current page check if after_hashset intersects occured_hashset
         let mut occured_pages = HashSet::new();
-        println!("CHECKING {:?}", update);
+        // println!("CHECKING {:?}", update);
         for value in update {
             let empty: HashSet<i128> = HashSet::new();
             let after_set = self.page_rules.get(value).unwrap_or_else(|| &empty);
-            println!(
-                "afterset {:?}, occured_pages {:?}, value {}",
-                after_set, occured_pages, value
-            );
+            // println!(
+            //     "afterset {:?}, occured_pages {:?}, value {}",
+            //     after_set, occured_pages, value
+            // );
             let intersection = occured_pages.intersection(after_set);
             if intersection.count() != 0 {
                 return Ok(false);
@@ -52,6 +52,41 @@ impl Input {
     }
     fn get_update_value(update: &[i128]) -> i128 {
         update[update.len() / 2]
+    }
+    fn get_sorted_update(&self, update: &[i128]) -> Result<Vec<i128>> {
+        let mut remaining: HashSet<&i128> = HashSet::from_iter(update.iter());
+        let mut sorted = Vec::new();
+        while !remaining.is_empty() {
+            let next = self.determine_next(&remaining)?;
+            sorted.push(next);
+            remaining.remove(&next);
+        }
+        Ok(sorted)
+    }
+    fn determine_next(&self, remaining: &HashSet<&i128>) -> Result<i128> {
+        // to place a value it must not come in any other values after list?
+        let remaining_vec: Vec<&&i128> = remaining.iter().collect();
+        for try_idx in 0..remaining_vec.len() {
+            if self.can_be_placed(try_idx, &remaining_vec)? {
+                return Ok(**remaining_vec[try_idx]);
+            }
+        }
+        Err(anyhow!("a placement must be possible"))
+    }
+    fn can_be_placed(&self, try_idx: usize, remaining_vec: &Vec<&&i128>) -> Result<bool> {
+        let try_value = **remaining_vec[try_idx];
+        for check_idx in 0..remaining_vec.len() {
+            let check_value = **remaining_vec[check_idx];
+            if try_idx == check_idx {
+                continue;
+            }
+            if let Some(check_set) = self.page_rules.get(&check_value) {
+                if check_set.contains(&try_value) {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(true)
     }
 }
 
@@ -98,17 +133,27 @@ fn solve_one(input: &Input) -> Result<Answer> {
     let mut sum = 0;
     for update in page_updates {
         if input.is_valid_update(update)? {
-            println!("{:?}", update);
+            // println!("{:?}", update);
             sum += Input::get_update_value(update);
         }
     }
-
     Ok(Answer::Num(sum))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input {
+        page_rules: _,
+        page_updates,
+    } = input;
+    let mut sum = 0;
+    for update in page_updates {
+        if input.is_valid_update(update)? {
+            continue;
+        }
+        let sorted_update = input.get_sorted_update(update)?;
+        sum += Input::get_update_value(&sorted_update);
+    }
+    Ok(Answer::Num(sum))
 }
 
 // Quickly obtain answers by running
@@ -130,7 +175,6 @@ mod day05_tests {
         assert_eq!(answer, Answer::Num(143));
         Ok(())
     }
-    #[test]
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
         assert_eq!(answer, Answer::Num(6041));
@@ -138,22 +182,23 @@ mod day05_tests {
     }
     #[bench]
     fn part_one(b: &mut Bencher) {
+        part_one_impl().expect("Error");
         b.iter(|| part_one_impl())
     }
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(123));
         Ok(())
     }
-    #[test]
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(4884));
         Ok(())
     }
     #[bench]
     fn part_two(b: &mut Bencher) {
+        part_two_impl().expect("Error");
         b.iter(|| part_two_impl())
     }
 }
