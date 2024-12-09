@@ -1,9 +1,9 @@
 #![feature(test)]
 extern crate test;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use common::Answer;
-use std::{collections::VecDeque, io, iter::repeat_n};
+use std::{collections::VecDeque, io};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -154,46 +154,57 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let mut blocks = blocks.clone();
     let mut gaps = gaps.clone();
     let mut result_blocks: Vec<Block> = Vec::new();
-    while let Some(gap_to_fill) = gaps.pop_front() {
-        if let Some(block_to_move) = blocks.pop_back() {
-            // println!("moving {:?} to gap {:?}", block_to_move, gap_to_fill);
-            if block_to_move.start < gap_to_fill.start {
-                blocks.push_back(block_to_move); // block was already better placed!
+
+    while let Some(block) = blocks.pop_back() {
+        let mut gap_idx = None;
+        for (idx, gap) in gaps.iter().enumerate() {
+            if gap.len >= block.len && gap.start < block.start {
+                result_blocks.push(Block {
+                    start: gap.start,
+                    len: block.len,
+                    id: block.id,
+                });
+                gap_idx = Some(idx);
                 break;
             }
-            if gap_to_fill.len > block_to_move.len {
-                result_blocks.push(Block {
-                    start: gap_to_fill.start,
-                    len: block_to_move.len,
-                    id: block_to_move.id,
-                });
-                gaps.push_front(Block {
-                    start: gap_to_fill.start + block_to_move.len,
-                    len: gap_to_fill.len - block_to_move.len,
-                    id: gap_to_fill.id,
-                });
-            } else if gap_to_fill.len < block_to_move.len {
+        }
+        if let Some(gap_idx) = gap_idx {
+            let old_gap = gaps[gap_idx].clone();
+            if old_gap.len == block.len {
+                gaps.remove(gap_idx);
             } else {
-                result_blocks.push(Block {
-                    start: gap_to_fill.start,
-                    len: gap_to_fill.len,
-                    id: block_to_move.id,
-                })
+                gaps[gap_idx] = Block {
+                    start: old_gap.start + block.len,
+                    len: old_gap.len - block.len,
+                    id: old_gap.id,
+                };
             }
+            // sort order of gaps doesn't matter
+            gaps.push_back(block);
+        } else {
+            result_blocks.push(block);
         }
     }
-    while let Some(block) = blocks.pop_back() {
-        result_blocks.push(block);
-    }
     result_blocks.sort_by(|&a, &b| a.start.cmp(&b.start));
-    // for b in result_blocks {
+    // for b in result_blocks.iter() {
     //     b.print()
     // }
     // println!();
+    let mut pos = 0;
+    for b in result_blocks.iter() {
+        while pos < b.start {
+            print!(".");
+            pos += 1;
+        }
+        b.print();
+        pos += b.len;
+    }
     let mut sum = 0;
     for b in result_blocks {
         sum += b.checksum();
     }
+    //00992111777.44.333....5555.6666.....8888
+    //00992111777.44.333....5555.6666.....8888..
     Ok(Answer::Num(sum))
 }
 
@@ -234,7 +245,7 @@ mod day09_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(6398096697992));
         Ok(())
     }
     #[bench]
