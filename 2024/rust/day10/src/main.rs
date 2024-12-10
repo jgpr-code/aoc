@@ -4,7 +4,7 @@ extern crate test;
 use anyhow::{anyhow, Result};
 use common::Answer;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     io,
 };
 
@@ -31,6 +31,7 @@ const DCOL: [i128; 4] = [0, 1, 0, -1];
 struct Input {
     hiking_area: Vec<Vec<i128>>,
     hiking_starts: Vec<(i128, i128)>,
+    hiking_ends: Vec<(i128, i128)>,
 }
 
 impl Input {
@@ -93,20 +94,58 @@ impl Input {
             && 0 <= col
             && col < self.hiking_area[0].len() as i128
     }
+    fn rate_hiking_trails(&self) -> i128 {
+        let mut sum = 0;
+        for (start_row, start_col) in self.hiking_starts.iter() {
+            for (end_row, end_col) in self.hiking_ends.iter() {
+                let mut memo = HashMap::new();
+                sum += self.dfs(*start_row, *start_col, *end_row, *end_col, &mut memo);
+            }
+        }
+        sum
+    }
+    fn dfs(
+        &self,
+        row: i128,
+        col: i128,
+        end_row: i128,
+        end_col: i128,
+        memo: &mut HashMap<(i128, i128), i128>,
+    ) -> i128 {
+        if let Some(value) = memo.get(&(row, col)) {
+            return *value;
+        }
+        if row == end_row && col == end_col {
+            return 1;
+        }
+        let mut possibilities = 0;
+        for (nrow, ncol) in self.get_neighs(row, col) {
+            possibilities += self.dfs(nrow, ncol, end_row, end_col, memo);
+        }
+        memo.insert((row, col), possibilities);
+        possibilities
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
     let mut hiking_area: Vec<Vec<i128>> = Vec::new();
     let mut hiking_starts = Vec::new();
+    let mut hiking_ends = Vec::new();
     for (row, line) in input.trim().lines().enumerate() {
         let mut nums = Vec::new();
         for (col, c) in line.trim().chars().enumerate() {
             if c == '0' {
                 hiking_starts.push((row as i128, col as i128));
             }
-            let num = c
-                .to_digit(10)
-                .ok_or(anyhow!("only digits are expected in the input"))?;
+            if c == '9' {
+                hiking_ends.push((row as i128, col as i128));
+            }
+            let num = if c == '.' {
+                Ok(100)
+            } else {
+                c.to_digit(10)
+                    .ok_or(anyhow!("only digits are expected in the input"))
+            }?;
             nums.push(num as i128);
         }
         hiking_area.push(nums);
@@ -115,6 +154,7 @@ fn parse_input(input: &str) -> Result<Input> {
     Ok(Input {
         hiking_area,
         hiking_starts,
+        hiking_ends,
     })
 }
 
@@ -124,7 +164,7 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let _unused = input;
-    Ok(Answer::Num(0))
+    Ok(Answer::Num(input.rate_hiking_trails()))
 }
 
 // Quickly obtain answers by running
@@ -159,12 +199,12 @@ mod day10_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(81));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(1242));
         Ok(())
     }
     #[bench]
