@@ -1,9 +1,12 @@
 #![feature(test)]
 extern crate test;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use common::Answer;
-use std::io;
+use std::{
+    collections::{HashSet, VecDeque},
+    io,
+};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -22,22 +25,101 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
+const DROW: [i128; 4] = [-1, 0, 1, 0];
+const DCOL: [i128; 4] = [0, 1, 0, -1];
+
 struct Input {
-    nums: Vec<i128>,
+    hiking_area: Vec<Vec<i128>>,
+    hiking_starts: Vec<(i128, i128)>,
+}
+
+impl Input {
+    fn count_hikes(&self) -> i128 {
+        let mut sum = 0;
+        for (start_row, start_col) in self.hiking_starts.iter() {
+            sum += self.bfs(*start_row, *start_col);
+        }
+        sum
+    }
+    fn bfs(&self, row: i128, col: i128) -> i128 {
+        let mut encountered = 0;
+        let mut visited: HashSet<(i128, i128)> = HashSet::new();
+        let mut queue: VecDeque<(i128, i128)> = VecDeque::new();
+        queue.push_back((row, col));
+        visited.insert((row, col));
+        while let Some((row, col)) = queue.pop_front() {
+            // println!(
+            //     "{}{}: {}",
+            //     row, col, self.hiking_area[row as usize][col as usize]
+            // );
+            if self.hiking_area[row as usize][col as usize] == 9 {
+                encountered += 1;
+            } else {
+                for neigh in self.get_neighs(row, col) {
+                    if !visited.contains(&neigh) {
+                        queue.push_back(neigh);
+                        visited.insert(neigh);
+                    }
+                }
+            }
+        }
+        encountered
+    }
+    fn get_neighs(&self, row: i128, col: i128) -> Vec<(i128, i128)> {
+        let mut neighs = Vec::new();
+        for dir in 0..4 {
+            if self.hike_possible(row, col, dir) {
+                neighs.push((row + DROW[dir], col + DCOL[dir]));
+            }
+        }
+        neighs
+    }
+    fn hike_possible(&self, row: i128, col: i128, dir: usize) -> bool {
+        let nrow = row + DROW[dir];
+        let ncol = col + DCOL[dir];
+        if !self.inside(nrow, ncol) {
+            return false;
+        }
+        if self.hiking_area[row as usize][col as usize]
+            != self.hiking_area[nrow as usize][ncol as usize] - 1
+        {
+            return false;
+        }
+        true
+    }
+    fn inside(&self, row: i128, col: i128) -> bool {
+        0 <= row
+            && row < self.hiking_area.len() as i128
+            && 0 <= col
+            && col < self.hiking_area[0].len() as i128
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let mut hiking_area: Vec<Vec<i128>> = Vec::new();
+    let mut hiking_starts = Vec::new();
+    for (row, line) in input.trim().lines().enumerate() {
+        let mut nums = Vec::new();
+        for (col, c) in line.trim().chars().enumerate() {
+            if c == '0' {
+                hiking_starts.push((row as i128, col as i128));
+            }
+            let num = c
+                .to_digit(10)
+                .ok_or(anyhow!("only digits are expected in the input"))?;
+            nums.push(num as i128);
+        }
+        hiking_area.push(nums);
+    }
+
+    Ok(Input {
+        hiking_area,
+        hiking_starts,
+    })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    Ok(Answer::Num(input.count_hikes()))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +143,12 @@ mod day10_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(36));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(629));
         Ok(())
     }
     #[bench]
