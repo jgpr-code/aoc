@@ -3,8 +3,9 @@ extern crate test;
 
 use anyhow::{anyhow, Result};
 use common::Answer;
+use core::panic;
 use std::{
-    collections::{BinaryHeap, HashSet},
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     io,
 };
 
@@ -112,8 +113,109 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { grid, start, end } = input;
+    let rows = grid.len() as i128;
+    let cols = grid[0].len() as i128;
+    // (-cost, row, col, orientation, old_row, old_col, old_orientation)
+    let initial = (0, start.0, start.1, 3, start.0, start.1, 3);
+    let mut best: HashMap<(i128, i128, i32), i128> = HashMap::new();
+    let mut visited = HashSet::new();
+    let mut prio_queue = BinaryHeap::new();
+    let mut best_graph: HashMap<(i128, i128, i32), Vec<(i128, i128, i32)>> = HashMap::new();
+    prio_queue.push(initial);
+    let mut final_cost = None;
+    while let Some(node) = prio_queue.pop() {
+        let (cost, row, col, orientation, old_row, old_col, old_orientation) = node;
+        if visited.contains(&(row, col, orientation)) {
+            let best_val = *best.get(&(row, col, orientation)).unwrap();
+            if -cost < best_val && best_val != 0 {
+                println!(
+                    "best was {}, current was {} at {},{},{}",
+                    best_val, -cost, row, col, orientation
+                );
+                panic!("why")
+            }
+            if -cost <= *best.get(&(row, col, orientation)).unwrap() {
+                best_graph
+                    .entry((row, col, orientation))
+                    .and_modify(|v| v.push((old_row, old_col, old_orientation)))
+                    .or_insert(vec![(old_row, old_col, old_orientation)]);
+            }
+            continue;
+        }
+        best.insert((row, col, orientation), -cost);
+        best_graph
+            .entry((row, col, orientation))
+            .and_modify(|v| v.push((old_row, old_col, old_orientation)))
+            .or_insert(vec![(old_row, old_col, old_orientation)]);
+        visited.insert((row, col, orientation));
+        if (row, col) == *end {
+            final_cost = Some(-cost);
+            break; // E must only be reachable from one previous tile otherwise this is potentially wrong
+        }
+        let left_orientation = turn(-1, orientation);
+        let right_orientation = turn(1, orientation);
+        let nrow = row + DROW[orientation as usize];
+        let ncol = col + DCOL[orientation as usize];
+        if inside(nrow, ncol, rows, cols) && grid[nrow as usize][ncol as usize] != '#' {
+            prio_queue.push((cost - 1, nrow, ncol, orientation, row, col, orientation));
+        }
+        prio_queue.push((
+            cost - 1000,
+            row,
+            col,
+            left_orientation,
+            row,
+            col,
+            orientation,
+        ));
+        prio_queue.push((
+            cost - 1000,
+            row,
+            col,
+            right_orientation,
+            row,
+            col,
+            orientation,
+        ));
+    }
+
+    // now count nodes in best_graph with simple bfs
+    let mut queue = VecDeque::new();
+    let mut count_visited = HashSet::new();
+    queue.push_back((end.0, end.1, 0));
+    queue.push_back((end.0, end.1, 1));
+    queue.push_back((end.0, end.1, 2));
+    queue.push_back((end.0, end.1, 3));
+    count_visited.insert((end.0, end.1, 0));
+    count_visited.insert((end.0, end.1, 1));
+    count_visited.insert((end.0, end.1, 2));
+    count_visited.insert((end.0, end.1, 3));
+    while let Some((row, col, orientation)) = queue.pop_front() {
+        if let Some(neighs) = best_graph.get(&(row, col, orientation)) {
+            for neigh in neighs.iter() {
+                if !count_visited.contains(neigh) {
+                    queue.push_back(*neigh);
+                    count_visited.insert(*neigh);
+                }
+            }
+        }
+    }
+    let count_visited: HashSet<(i128, i128)> =
+        count_visited.iter().map(|&(r, c, _)| (r, c)).collect();
+
+    for row in 0..grid.len() {
+        for col in 0..grid[0].len() {
+            if count_visited.contains(&(row as i128, col as i128)) {
+                print!("O");
+            } else {
+                print!("{}", grid[row][col])
+            }
+        }
+        println!();
+    }
+
+    Ok(Answer::Num(count_visited.iter().count() as i128))
 }
 
 // Quickly obtain answers by running
@@ -137,7 +239,7 @@ mod day16_tests {
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(89460));
         Ok(())
     }
     #[bench]
@@ -148,7 +250,7 @@ mod day16_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(64));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
