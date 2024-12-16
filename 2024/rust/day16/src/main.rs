@@ -3,7 +3,7 @@ extern crate test;
 
 use anyhow::{anyhow, Result};
 use common::Answer;
-use core::panic;
+// use core::panic;
 use std::{
     collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     io,
@@ -123,18 +123,18 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let mut prio_queue = BinaryHeap::new();
     let mut best_graph: HashMap<(i128, i128, i32), Vec<(i128, i128, i32)>> = HashMap::new();
     prio_queue.push(initial);
-    let mut final_cost = None;
+    // let mut final_cost = None;
     while let Some(node) = prio_queue.pop() {
         let (cost, row, col, orientation, old_row, old_col, old_orientation) = node;
         if visited.contains(&(row, col, orientation)) {
-            let best_val = *best.get(&(row, col, orientation)).unwrap();
-            if -cost < best_val && best_val != 0 {
-                println!(
-                    "best was {}, current was {} at {},{},{}",
-                    best_val, -cost, row, col, orientation
-                );
-                panic!("why")
-            }
+            // let best_val = *best.get(&(row, col, orientation)).unwrap();
+            // if -cost < best_val && best_val != 0 {
+            //     println!(
+            //         "best was {}, current was {} at {},{},{}",
+            //         best_val, -cost, row, col, orientation
+            //     );
+            //     panic!("why")
+            // }
             if -cost <= *best.get(&(row, col, orientation)).unwrap() {
                 best_graph
                     .entry((row, col, orientation))
@@ -150,7 +150,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
             .or_insert(vec![(old_row, old_col, old_orientation)]);
         visited.insert((row, col, orientation));
         if (row, col) == *end {
-            final_cost = Some(-cost);
+            // _final_cost = Some(-cost);
             break; // E must only be reachable from one previous tile otherwise this is potentially wrong
         }
         let left_orientation = turn(-1, orientation);
@@ -204,16 +204,16 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let count_visited: HashSet<(i128, i128)> =
         count_visited.iter().map(|&(r, c, _)| (r, c)).collect();
 
-    for row in 0..grid.len() {
-        for col in 0..grid[0].len() {
-            if count_visited.contains(&(row as i128, col as i128)) {
-                print!("O");
-            } else {
-                print!("{}", grid[row][col])
-            }
-        }
-        println!();
-    }
+    // for row in 0..grid.len() {
+    //     for col in 0..grid[0].len() {
+    //         if count_visited.contains(&(row as i128, col as i128)) {
+    //             print!("O");
+    //         } else {
+    //             print!("{}", grid[row][col])
+    //         }
+    //     }
+    //     println!();
+    // }
 
     Ok(Answer::Num(count_visited.iter().count() as i128))
 }
@@ -255,7 +255,7 @@ mod day16_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(504));
         Ok(())
     }
     #[bench]
