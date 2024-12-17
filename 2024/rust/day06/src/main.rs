@@ -339,7 +339,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
                         let oirow = irow as i128 + DROW[guard_dir];
                         let oicol = icol as i128 + DCOL[guard_dir];
                         if inside(oirow, oicol, rows as i128, cols as i128)
-                            && grid_copy[oirow as usize][oicol as usize] == '.'
+                            && grid_copy[oirow as usize][oicol as usize] != '#'
                         {
                             count_loops += 1;
                             loop_obstacles.insert((oirow, oicol));
@@ -373,7 +373,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
                         let oirow = irow as i128 + DROW[guard_dir];
                         let oicol = icol as i128 + DCOL[guard_dir];
                         if inside(oirow, oicol, rows as i128, cols as i128)
-                            && grid_copy[oirow as usize][oicol as usize] == '.'
+                            && grid_copy[oirow as usize][oicol as usize] != '#'
                         {
                             count_loops += 1;
                             loop_obstacles.insert((oirow, oicol));
@@ -407,7 +407,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
                         let oirow = irow as i128 + DROW[guard_dir];
                         let oicol = icol as i128 + DCOL[guard_dir];
                         if inside(oirow, oicol, rows as i128, cols as i128)
-                            && grid_copy[oirow as usize][oicol as usize] == '.'
+                            && grid_copy[oirow as usize][oicol as usize] != '#'
                         {
                             count_loops += 1;
                             loop_obstacles.insert((oirow, oicol));
@@ -441,7 +441,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
                         let oirow = irow as i128 + DROW[guard_dir];
                         let oicol = icol as i128 + DCOL[guard_dir];
                         if inside(oirow, oicol, rows as i128, cols as i128)
-                            && grid_copy[oirow as usize][oicol as usize] == '.'
+                            && grid_copy[oirow as usize][oicol as usize] != '#'
                         {
                             count_loops += 1;
                             loop_obstacles.insert((oirow, oicol));
