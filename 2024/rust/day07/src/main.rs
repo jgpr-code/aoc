@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use common::Answer;
 use std::io;
 
@@ -22,22 +22,60 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
-struct Input {
+struct Equation {
+    target: i128,
     nums: Vec<i128>,
 }
 
+impl Equation {
+    fn solveable(&self) -> bool {
+        if self.nums.len() < 1 {
+            return false;
+        }
+        let next = self.nums[0];
+        return self.solve(next, Self::skip_one_cloned(&self.nums));
+    }
+    fn skip_one_cloned(nums: &Vec<i128>) -> Vec<i128> {
+        nums.iter().skip(1).cloned().collect()
+    }
+    fn solve(&self, accu: i128, nums: Vec<i128>) -> bool {
+        if nums.is_empty() {
+            return accu == self.target;
+        }
+        let next = nums[0];
+        let solve_mul = self.solve(accu * next, Self::skip_one_cloned(&nums));
+        let solve_add = self.solve(accu + next, Self::skip_one_cloned(&nums));
+        solve_mul || solve_add
+    }
+}
+
+struct Input {
+    equations: Vec<Equation>,
+}
+
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let mut equations = Vec::new();
+    for line in input.trim().lines() {
+        let (target, rest) = line.split_once(":").ok_or(anyhow!(": expected"))?;
+        let target = i128::from_str_radix(target.trim(), 10)?;
+        let nums = rest
+            .trim()
+            .split(" ")
+            .map(|n| i128::from_str_radix(n, 10))
+            .collect::<Result<Vec<_>, _>>()?;
+        equations.push(Equation { target, nums });
+    }
+    Ok(Input { equations })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input { equations } = input;
+    let calibration = equations
+        .iter()
+        .filter(|e| e.solveable())
+        .map(|e| e.target)
+        .sum();
+    Ok(Answer::Num(calibration))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +99,12 @@ mod day07_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(3749));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(6392012777720));
         Ok(())
     }
     #[bench]
