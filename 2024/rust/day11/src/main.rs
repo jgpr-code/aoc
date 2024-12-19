@@ -23,26 +23,67 @@ pub fn part_two(input: &str) -> Result<Answer> {
 }
 
 struct Input {
-    nums: Vec<i128>,
+    stones: Vec<i128>,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
+    let stones = input
+        .trim()
+        .split_whitespace()
+        .map(|s| i128::from_str_radix(s, 10))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    Ok(Input { stones })
+}
+
+fn even_digits(num: i128) -> bool {
+    num.to_string().len() % 2 == 0
+}
+fn split_even_digits(num: i128) -> Result<(i128, i128)> {
+    let num_str = num.to_string();
+    let half = num_str.len() / 2;
+    let a = i128::from_str_radix(&num_str[0..half], 10)?;
+    let b = i128::from_str_radix(&num_str[half..], 10)?;
+    Ok((a, b))
+}
+
+fn blink(stones: &[i128]) -> Result<Vec<i128>> {
+    let mut result = Vec::new();
+    for &stone in stones {
+        if stone == 0 {
+            result.push(1);
+        } else if even_digits(stone) {
+            let (a, b) = split_even_digits(stone)?;
+            result.push(a);
+            result.push(b);
+        } else {
+            result.push(stone * 2024);
+        }
+    }
+    Ok(result)
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let test = i128::from_str_radix("0010", 10)?;
+    assert_eq!(test, 10);
+    let Input { stones } = input;
+    let mut current_stones = stones.clone();
+    let mut blinks_left = 25;
+    while blinks_left > 0 {
+        current_stones = blink(&current_stones)?;
+        blinks_left -= 1;
+    }
+    Ok(Answer::Num(current_stones.len() as i128))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { stones } = input;
+    let mut current_stones = stones.clone();
+    let mut blinks_left = 75;
+    while blinks_left > 0 {
+        current_stones = blink(&current_stones)?;
+        blinks_left -= 1;
+    }
+    Ok(Answer::Num(current_stones.len() as i128))
 }
 
 // Quickly obtain answers by running
@@ -61,12 +102,12 @@ mod day11_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(55312));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(203228));
         Ok(())
     }
     #[bench]
