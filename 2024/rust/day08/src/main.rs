@@ -3,7 +3,10 @@ extern crate test;
 
 use anyhow::Result;
 use common::Answer;
-use std::io;
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -23,21 +26,63 @@ pub fn part_two(input: &str) -> Result<Answer> {
 }
 
 struct Input {
-    nums: Vec<i128>,
+    antennas: HashMap<char, Vec<(usize, usize)>>,
+    rows: usize,
+    cols: usize,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let mut antennas: HashMap<char, Vec<(usize, usize)>> = HashMap::new();
+    let mut rows = 0;
+    let mut cols = 0;
+    for (row, line) in input.trim().lines().enumerate() {
+        rows += 1;
+        cols = line.len();
+        for (col, c) in line.chars().enumerate() {
+            if c != '.' {
+                antennas
+                    .entry(c)
+                    .and_modify(|v| v.push((row, col)))
+                    .or_insert(vec![(row, col)]);
+            }
+        }
+    }
+    Ok(Input {
+        antennas,
+        rows,
+        cols,
+    })
+}
+
+fn inside(row: i32, col: i32, rows: usize, cols: usize) -> bool {
+    0 <= row && row < rows as i32 && 0 <= col && col < cols as i32
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input {
+        antennas,
+        rows,
+        cols,
+    } = input;
+    let mut antinodes = HashSet::new();
+    for (_c, v) in antennas.iter() {
+        let n = v.len();
+        for i in 0..n {
+            for j in 0..n {
+                if i == j {
+                    continue;
+                }
+                let from = (v[i].0 as i32, v[i].1 as i32);
+                let to = (v[j].0 as i32, v[j].1 as i32);
+                let delta = (to.0 - from.0, to.1 - from.1);
+                let target = (from.0 + 2 * delta.0, from.1 + 2 * delta.1);
+                if inside(target.0, target.1, *rows, *cols) {
+                    antinodes.insert((target.0 as usize, target.1 as usize));
+                }
+            }
+        }
+    }
+    Ok(Answer::Num(antinodes.len() as i128))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +106,12 @@ mod day08_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(14));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(293));
         Ok(())
     }
     #[bench]
