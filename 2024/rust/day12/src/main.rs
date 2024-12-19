@@ -4,7 +4,7 @@ extern crate test;
 use anyhow::{anyhow, Result};
 use common::Answer;
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     io,
 };
 
@@ -45,19 +45,24 @@ struct PlantZone {
     plant_type: char,
     area: i128,
     perimeter: i128,
+    sides: i128,
 }
 
 impl PlantZone {
-    fn new(plant_type: char, area: i128, perimeter: i128) -> Self {
+    fn new(plant_type: char, area: i128, perimeter: i128, sides: i128) -> Self {
         Self {
             plant_type,
             area,
             perimeter,
+            sides,
         }
     }
     fn price(&self) -> i128 {
         println!("{} * {} = {}", self.area, self.perimeter, self.plant_type);
         self.area * self.perimeter
+    }
+    fn new_price(&self) -> i128 {
+        self.area * self.sides
     }
 }
 
@@ -73,19 +78,23 @@ impl Garden {
         let col = col as i32;
         let mut area = 0;
         let mut perimeter = 0;
+        let mut sides = 0;
         let mut local_visited = HashSet::new();
+        let mut sides_counted: HashMap<(usize, usize), Vec<bool>> = HashMap::new(); // (row, col) -> [up, right, down, left] counted booleans
         let mut queue = VecDeque::new();
         queue.push_back((row, col));
         local_visited.insert((row as usize, col as usize));
         while let Some((row, col)) = queue.pop_front() {
             area += 1;
             perimeter += 4;
+            let mut transitions = vec![true, true, true, true];
             for dir in 0..4 {
                 let nrow = row + DROW[dir];
                 let ncol = col + DCOL[dir];
                 if self.inside(nrow, ncol) {
                     if self.field[nrow as usize][ncol as usize] == plant_type {
                         perimeter -= 1;
+                        transitions[dir] = false;
                         if !local_visited.contains(&(nrow as usize, ncol as usize)) {
                             queue.push_back((nrow, ncol));
                             local_visited.insert((nrow as usize, ncol as usize));
@@ -93,15 +102,48 @@ impl Garden {
                     }
                 }
             }
+            for dir in 0..4 {
+                if transitions[dir] {
+                    // TODO extract function?
+                    let n1 = (dir + 1) % 4;
+                    let row1 = row + DROW[n1];
+                    let col1 = col + DCOL[n1];
+                    let mut n1_counted = false;
+                    if self.inside(row1, col1) {
+                        if let Some(v) = sides_counted.get(&(row1 as usize, col1 as usize)) {
+                            n1_counted = v[dir];
+                        }
+                    }
+
+                    let n2 = (dir + 3) % 4;
+                    let row2 = row + DROW[n2];
+                    let col2 = col + DCOL[n2];
+                    let mut n2_counted = false;
+                    if self.inside(row2, col2) {
+                        if let Some(v) = sides_counted.get(&(row2 as usize, col2 as usize)) {
+                            n2_counted = v[dir];
+                        }
+                    }
+                    if !n1_counted && !n2_counted {
+                        sides += 1;
+                    }
+                    let e = sides_counted
+                        .entry((row as usize, col as usize))
+                        .or_insert(vec![false, false, false, false]);
+                    e[dir] = true;
+                }
+            }
         }
-        (PlantZone::new(plant_type, area, perimeter), local_visited)
+        (
+            PlantZone::new(plant_type, area, perimeter, sides),
+            local_visited,
+        )
     }
 }
 
 fn solve_one(input: &Garden) -> Result<Answer> {
     let mut visited: HashSet<(usize, usize)> = HashSet::new();
     let mut plant_zones = Vec::new();
-    // visited.union(other)
     for row in 0..input.rows {
         for col in 0..input.cols {
             if !visited.contains(&(row, col)) {
@@ -117,8 +159,20 @@ fn solve_one(input: &Garden) -> Result<Answer> {
 }
 
 fn solve_two(input: &Garden) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let mut visited: HashSet<(usize, usize)> = HashSet::new();
+    let mut plant_zones = Vec::new();
+    for row in 0..input.rows {
+        for col in 0..input.cols {
+            if !visited.contains(&(row, col)) {
+                let (zone, local_visited) = input.fence_plants(row, col);
+                local_visited.iter().for_each(|&x| {
+                    visited.insert(x);
+                });
+                plant_zones.push(zone);
+            }
+        }
+    }
+    Ok(Answer::Num(plant_zones.iter().map(|z| z.new_price()).sum()))
 }
 
 // Quickly obtain answers by running
@@ -153,12 +207,12 @@ mod day12_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(1206));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(841934));
         Ok(())
     }
     #[bench]
