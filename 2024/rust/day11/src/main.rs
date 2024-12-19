@@ -3,7 +3,7 @@ extern crate test;
 
 use anyhow::Result;
 use common::Answer;
-use std::io;
+use std::{collections::HashMap, io};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -62,6 +62,36 @@ fn blink(stones: &[i128]) -> Result<Vec<i128>> {
     Ok(result)
 }
 
+struct FastBlinking {
+    blink_map: HashMap<(i128, i128), i128>,
+}
+
+impl FastBlinking {
+    fn new() -> Self {
+        Self {
+            blink_map: HashMap::new(),
+        }
+    }
+    fn blink(&mut self, stone: i128, blinks: i128) -> Result<i128> {
+        if blinks == 0 {
+            return Ok(1);
+        }
+        if let Some(&answer) = self.blink_map.get(&(stone, blinks)) {
+            return Ok(answer);
+        }
+        let answer = if stone == 0 {
+            self.blink(1, blinks - 1)?
+        } else if even_digits(stone) {
+            let (a, b) = split_even_digits(stone)?;
+            self.blink(a, blinks - 1)? + self.blink(b, blinks - 1)?
+        } else {
+            self.blink(stone * 2024, blinks - 1)?
+        };
+        self.blink_map.insert((stone, blinks), answer);
+        return Ok(answer);
+    }
+}
+
 fn solve_one(input: &Input) -> Result<Answer> {
     let test = i128::from_str_radix("0010", 10)?;
     assert_eq!(test, 10);
@@ -77,13 +107,13 @@ fn solve_one(input: &Input) -> Result<Answer> {
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let Input { stones } = input;
-    let mut current_stones = stones.clone();
-    let mut blinks_left = 75;
-    while blinks_left > 0 {
-        current_stones = blink(&current_stones)?;
-        blinks_left -= 1;
+    let blinks_left = 75;
+    let mut fast_blinking = FastBlinking::new();
+    let mut sum = 0;
+    for stone in stones {
+        sum += fast_blinking.blink(*stone, blinks_left)?;
     }
-    Ok(Answer::Num(current_stones.len() as i128))
+    Ok(Answer::Num(sum))
 }
 
 // Quickly obtain answers by running
@@ -118,12 +148,12 @@ mod day11_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(65601038650482));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(240884656550923));
         Ok(())
     }
     #[bench]
