@@ -86,8 +86,31 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input {
+        antennas,
+        rows,
+        cols,
+    } = input;
+    let mut antinodes = HashSet::new();
+    for (_c, v) in antennas.iter() {
+        let n = v.len();
+        for i in 0..n {
+            for j in 0..n {
+                if i == j {
+                    continue;
+                }
+                let from = (v[i].0 as i32, v[i].1 as i32);
+                let to = (v[j].0 as i32, v[j].1 as i32);
+                let delta = (to.0 - from.0, to.1 - from.1);
+                let mut current_target = to;
+                while inside(current_target.0, current_target.1, *rows, *cols) {
+                    antinodes.insert((current_target.0 as usize, current_target.1 as usize));
+                    current_target = (current_target.0 + delta.0, current_target.1 + delta.1);
+                }
+            }
+        }
+    }
+    Ok(Answer::Num(antinodes.len() as i128))
 }
 
 // Quickly obtain answers by running
@@ -122,12 +145,12 @@ mod day08_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(34));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(934));
         Ok(())
     }
     #[bench]
