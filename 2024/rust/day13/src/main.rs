@@ -33,7 +33,7 @@ impl ClawMachine {
     fn to_signed(p: (usize, usize)) -> (i128, i128) {
         (p.0 as i128, p.1 as i128)
     }
-    fn get_the_price(&self) -> Option<usize> {
+    fn get_the_price(&self, p_offset: usize) -> Option<usize> {
         // min 3 * na + nb
         // s.t.
         // ax * na + bx * nb = px
@@ -59,6 +59,8 @@ impl ClawMachine {
         let (ax, ay) = Self::to_signed(self.button_a);
         let (bx, by) = Self::to_signed(self.button_b);
         let (px, py) = Self::to_signed(self.price);
+        let px = px + p_offset as i128;
+        let py = py + p_offset as i128;
 
         let numerator = bx * py - by * px;
         let denominator = bx * ay - by * ax;
@@ -127,7 +129,7 @@ fn solve_one(input: &Input) -> Result<Answer> {
     let Input { all_machines } = input;
     let mut total_cost = 0;
     for machine in all_machines {
-        if let Some(cost) = machine.get_the_price() {
+        if let Some(cost) = machine.get_the_price(0) {
             total_cost += cost;
         }
     }
@@ -135,8 +137,14 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { all_machines } = input;
+    let mut total_cost = 0;
+    for machine in all_machines {
+        if let Some(cost) = machine.get_the_price(10000000000000) {
+            total_cost += cost;
+        }
+    }
+    Ok(Answer::Num(total_cost as i128))
 }
 
 // Quickly obtain answers by running
@@ -171,12 +179,12 @@ mod day13_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(875318608908));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(101726882250942));
         Ok(())
     }
     #[bench]
