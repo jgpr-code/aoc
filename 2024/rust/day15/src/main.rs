@@ -66,45 +66,27 @@ impl Input {
         if self.obstructions.contains(&move_to) || self.obstructions.contains(&move_to_right_side) {
             return None;
         }
+        let mut result = vec![a_box];
         let left_box = self.contains_box(move_to);
-        let right_box = self.contains_box(move_to_right_side);
-        if left_box.is_none() && right_box.is_none() {
-            return Some(vec![a_box]);
-        } else {
-            let mut moved_left_boxes = None;
-            if let Some(left_box) = left_box {
-                if left_box == a_box { // ignore
-                } else if let Some(moved_boxes) = self.move_box_enlarged(left_box, dir) {
-                    moved_left_boxes = Some(moved_boxes);
+        if let Some(left_box) = left_box {
+            if left_box != a_box {
+                if let Some(moved_boxes) = self.move_box_enlarged(left_box, dir) {
+                    result.extend(moved_boxes);
                 } else {
                     return None;
                 }
             }
-            let mut moved_right_boxes = None;
-            if let Some(right_box) = right_box {
-                if right_box == a_box { // ignore
-                } else if let Some(moved_boxes) = self.move_box_enlarged(right_box, dir) {
-                    moved_right_boxes = Some(moved_boxes);
-                } else {
-                    return None;
-                }
-            }
-            let mut result_boxes = Vec::new();
-            result_boxes.push(a_box);
-            if let Some(moved_left_boxes) = moved_left_boxes {
-                for moved_box in moved_left_boxes.into_iter() {
-                    result_boxes.push(moved_box);
-                }
-            }
-            if left_box != right_box {
-                if let Some(moved_right_boxes) = moved_right_boxes {
-                    for moved_box in moved_right_boxes.into_iter() {
-                        result_boxes.push(moved_box);
-                    }
-                }
-            }
-            return Some(result_boxes);
         }
+        if let Some(right_box) = self.contains_box(move_to_right_side) {
+            if right_box != a_box && left_box.map_or(true, |left_box| left_box != right_box) {
+                if let Some(moved_boxes) = self.move_box_enlarged(right_box, dir) {
+                    result.extend(moved_boxes);
+                } else {
+                    return None;
+                }
+            }
+        }
+        return Some(result);
     }
     fn get_dir(instruction: char) -> Result<(i32, i32)> {
         Ok(match instruction {
