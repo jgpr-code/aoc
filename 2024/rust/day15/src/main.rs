@@ -28,13 +28,20 @@ struct Input {
     boxes: HashSet<(i32, i32)>,
     obstructions: HashSet<(i32, i32)>,
     instructions: Vec<char>,
+    is_enlarged: bool,
 }
 
 impl Input {
     fn simulate_instructions(&mut self) -> Result<()> {
         let instruction = self.instructions.clone();
-        for instruction in instruction.into_iter() {
-            self.simulate_instruction(instruction)?;
+        if self.is_enlarged {
+            for instruction in instruction.into_iter() {
+                self.simulate_instruction_enlarged(instruction)?;
+            }
+        } else {
+            for instruction in instruction.into_iter() {
+                self.simulate_instruction(instruction)?;
+            }
         }
         Ok(())
     }
@@ -53,23 +60,100 @@ impl Input {
         }
         Some(vec![a_box])
     }
-    fn simulate_instruction(&mut self, instruction: char) -> Result<()> {
-        let dir = match instruction {
+    fn move_box_enlarged(&self, a_box: (i32, i32), dir: (i32, i32)) -> Option<Vec<(i32, i32)>> {
+        let move_to = (a_box.0 + dir.0, a_box.1 + dir.1);
+        let move_to_right_side = (move_to.0, move_to.1 + 1);
+        if self.obstructions.contains(&move_to) || self.obstructions.contains(&move_to_right_side) {
+            return None;
+        }
+        let left_box = self.contains_box(move_to);
+        let right_box = self.contains_box(move_to_right_side);
+        if left_box.is_none() && right_box.is_none() {
+            return Some(vec![a_box]);
+        } else {
+            let mut moved_left_boxes = None;
+            if let Some(left_box) = left_box {
+                if left_box == a_box { // ignore
+                } else if let Some(moved_boxes) = self.move_box_enlarged(left_box, dir) {
+                    moved_left_boxes = Some(moved_boxes);
+                } else {
+                    return None;
+                }
+            }
+            let mut moved_right_boxes = None;
+            if let Some(right_box) = right_box {
+                if right_box == a_box { // ignore
+                } else if let Some(moved_boxes) = self.move_box_enlarged(right_box, dir) {
+                    moved_right_boxes = Some(moved_boxes);
+                } else {
+                    return None;
+                }
+            }
+            let mut result_boxes = Vec::new();
+            result_boxes.push(a_box);
+            if let Some(moved_left_boxes) = moved_left_boxes {
+                for moved_box in moved_left_boxes.into_iter() {
+                    result_boxes.push(moved_box);
+                }
+            }
+            if left_box != right_box {
+                if let Some(moved_right_boxes) = moved_right_boxes {
+                    for moved_box in moved_right_boxes.into_iter() {
+                        result_boxes.push(moved_box);
+                    }
+                }
+            }
+            return Some(result_boxes);
+        }
+    }
+    fn get_dir(instruction: char) -> Result<(i32, i32)> {
+        Ok(match instruction {
             '^' => (-1, 0),
             '>' => (0, 1),
             'v' => (1, 0),
             '<' => (0, -1),
             _ => return Err(anyhow!("invalid instruction {}", instruction)),
-        };
+        })
+    }
+    fn simulate_instruction(&mut self, instruction: char) -> Result<()> {
+        let dir = Self::get_dir(instruction)?;
         let move_to = (self.robot.0 + dir.0, self.robot.1 + dir.1);
-        // let nrow = self.robot.0 as i32 + drow;
-        // let ncol = self.robot.1 as i32 + dcol;
-        // let target = self.field[nrow as usize][ncol as usize];
         if self.obstructions.contains(&move_to) {
             return Ok(());
         }
         if self.boxes.contains(&move_to) {
             if let Some(moved_boxes) = self.move_box(move_to, dir) {
+                self.robot = move_to;
+                for moved_box in moved_boxes.iter() {
+                    self.boxes.remove(&moved_box);
+                }
+                for moved_box in moved_boxes.iter() {
+                    let moved_box = (moved_box.0 + dir.0, moved_box.1 + dir.1);
+                    self.boxes.insert(moved_box);
+                }
+            }
+        } else {
+            self.robot = move_to;
+        }
+        Ok(())
+    }
+    fn contains_box(&self, target: (i32, i32)) -> Option<(i32, i32)> {
+        let left_of_target = (target.0, target.1 - 1);
+        if self.boxes.contains(&target) {
+            return Some(target);
+        } else if self.boxes.contains(&left_of_target) {
+            return Some(left_of_target);
+        }
+        None
+    }
+    fn simulate_instruction_enlarged(&mut self, instruction: char) -> Result<()> {
+        let dir = Self::get_dir(instruction)?;
+        let move_to = (self.robot.0 + dir.0, self.robot.1 + dir.1);
+        if self.obstructions.contains(&move_to) {
+            return Ok(());
+        }
+        if let Some(box_at_target) = self.contains_box(move_to) {
+            if let Some(moved_boxes) = self.move_box_enlarged(box_at_target, dir) {
                 self.robot = move_to;
                 for moved_box in moved_boxes.iter() {
                     self.boxes.remove(&moved_box);
@@ -95,7 +179,22 @@ impl Input {
         }
         sum
     }
-    fn enlarge(&mut self) {}
+    fn enlarge(&mut self) {
+        // row aka 0 stays the same
+        self.robot = (self.robot.0, self.robot.1 * 2);
+        let mut new_obstructions = HashSet::new();
+        for old_obstruction in self.obstructions.iter() {
+            new_obstructions.insert((old_obstruction.0, old_obstruction.1 * 2));
+            new_obstructions.insert((old_obstruction.0, old_obstruction.1 * 2 + 1));
+        }
+        self.obstructions = new_obstructions;
+        let mut new_boxes = HashSet::new();
+        for old_box in self.boxes.iter() {
+            new_boxes.insert((old_box.0, old_box.1 * 2));
+        }
+        self.boxes = new_boxes;
+        self.is_enlarged = true;
+    }
 }
 
 fn parse_input(input: &str) -> Result<Input> {
@@ -126,6 +225,7 @@ fn parse_input(input: &str) -> Result<Input> {
         boxes,
         obstructions,
         instructions,
+        is_enlarged: false,
     })
 }
 
@@ -136,8 +236,10 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let mut input = input.clone();
+    input.enlarge();
+    input.simulate_instructions()?;
+    Ok(Answer::Num(input.gps_sum()))
 }
 
 // Quickly obtain answers by running
@@ -177,7 +279,7 @@ mod day15_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(1392847));
         Ok(())
     }
     #[bench]
