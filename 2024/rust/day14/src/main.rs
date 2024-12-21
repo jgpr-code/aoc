@@ -3,7 +3,7 @@ extern crate test;
 
 use anyhow::{anyhow, Result};
 use common::{regx, Answer};
-use std::io;
+use std::{collections::HashMap, io};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -45,8 +45,7 @@ impl Robot {
             Self::modulo(self.position.1 + times * self.velocity.1, on_field.1),
         );
     }
-
-    pub fn safety_factor(robots: &Vec<Robot>, on_field: (i32, i32)) -> usize {
+    fn safety_factor(robots: &Vec<Robot>, on_field: (i32, i32)) -> usize {
         let middle = (on_field.0 / 2, on_field.1 / 2);
         let mut q1 = 0;
         let mut q2 = 0;
@@ -82,8 +81,28 @@ impl Robot {
                 }
             }
         }
-        println!("{} {} {} {}", q1, q2, q3, q4);
+        // println!("{} {} {} {}", q1, q2, q3, q4);
         q1 * q2 * q3 * q4
+    }
+    fn print_robots(robots: &Vec<Robot>, on_field: (i32, i32)) {
+        let mut robot_map: HashMap<(i32, i32), i32> = HashMap::new();
+        for robot in robots {
+            robot_map
+                .entry(robot.position)
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+        }
+        for y in 0..on_field.1 {
+            for x in 0..on_field.0 {
+                if robot_map.contains_key(&(x, y)) {
+                    print!("R");
+                } else {
+                    print!(".");
+                }
+            }
+            println!();
+        }
+        println!();
     }
 }
 
@@ -130,9 +149,23 @@ fn solve_one(input: &Input, on_field: (i32, i32)) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input, on_field: (i32, i32)) -> Result<Answer> {
-    let _unused = input;
-    let _unused = on_field;
-    Ok(Answer::Num(0))
+    let Input { robots } = input;
+    let mut the_robots = robots.clone();
+    let mut t = 0;
+    let mut lowest_safety_factor = None;
+    let mut low_t = None;
+    while t < 100_000 {
+        t += 1;
+        the_robots.iter_mut().for_each(|r| r.move_me(1, on_field));
+        let safety = Robot::safety_factor(&the_robots, on_field);
+        if lowest_safety_factor.map_or(true, |f| safety < f) {
+            println!("time {}", t);
+            Robot::print_robots(&the_robots, on_field);
+            lowest_safety_factor = Some(safety);
+            low_t = Some(t);
+        }
+    }
+    Ok(Answer::Num(low_t.unwrap()))
 }
 
 // Quickly obtain answers by running
@@ -166,13 +199,13 @@ mod day14_tests {
     }
     #[test]
     fn test_two() -> Result<()> {
-        let answer = super::part_two(&TEST, (11, 7))?;
-        assert_eq!(answer, Answer::Num(0));
+        // let answer = super::part_two(&TEST, (11, 7))?;
+        //assert_eq!(answer, Answer::Num(0));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT, (101, 103))?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(6446));
         Ok(())
     }
     #[bench]
