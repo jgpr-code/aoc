@@ -3,7 +3,7 @@ extern crate test;
 
 use anyhow::{anyhow, Result};
 use common::Answer;
-use std::io;
+use std::{collections::HashMap, io};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -50,9 +50,15 @@ impl Computer {
         self.register_b = 0;
         self.register_c = 0;
     }
-    fn run_program(&mut self, program: &[u8], must_be_quine: bool) -> Result<String> {
+    fn output_string(program_output: &[u8]) -> String {
+        program_output
+            .iter()
+            .map(|u| u.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+    fn run_program(&mut self, program: &[u8]) -> Result<Vec<u8>> {
         let mut output = Vec::new();
-        let mut nout = 0;
         let mut instruction_pointer = 0;
         while instruction_pointer < program.len() - 1 {
             // -1 because opcode but no operand
@@ -70,20 +76,7 @@ impl Computer {
                     }
                 }
                 4 => self.bxc(operand),
-                5 => {
-                    // println!("reg_a at out: {}", self.register_a);
-                    let out_value = self.out(operand);
-                    // nout += 1;
-                    // if must_be_quine {
-                    //     if program
-                    //         .get(nout - 1)
-                    //         .map_or(true, |&p| p.to_string() != out_value)
-                    //     {
-                    //         return Ok(String::from("failed"));
-                    //     }
-                    // }
-                    output.push(out_value);
-                }
+                5 => output.push(self.out(operand)),
                 6 => self.bdv(operand),
                 7 => self.cdv(operand),
                 _ => return Err(anyhow!("invalid opcode")),
@@ -92,19 +85,6 @@ impl Computer {
                 instruction_pointer += 2;
             }
         }
-        let output = output.join(",");
-        // if must_be_quine {
-        //     let program_str = program
-        //         .iter()
-        //         .map(|&u| u.to_string())
-        //         .collect::<Vec<_>>()
-        //         .join(",");
-        //     if output != program_str {
-        //         println!("program: {}", program_str);
-        //         println!("output:  {}", output);
-        //         return Ok(String::from("failed"));
-        //     }
-        // }
         Ok(output)
     }
     fn combo(&self, operand: u8) -> u128 {
@@ -135,8 +115,8 @@ impl Computer {
     fn bxc(&mut self, _operand: u8) {
         self.register_b = self.register_b ^ self.register_c;
     }
-    fn out(&mut self, operand: u8) -> String {
-        (self.combo(operand) % 8).to_string()
+    fn out(&mut self, operand: u8) -> u8 {
+        (self.combo(operand) % 8) as u8
     }
     fn bdv(&mut self, operand: u8) {
         let numerator = self.register_a;
@@ -186,45 +166,90 @@ fn parse_input(input: &str) -> Result<Input> {
 
 fn solve_one(input: &Input) -> Result<Answer> {
     let mut computer = Computer::from(input);
-    let program_output = computer.run_program(&input.program, false)?;
+    let program_output = computer.run_program(&input.program)?;
+    let program_output = Computer::output_string(&program_output);
     Ok(Answer::Str(program_output))
+}
+
+fn construct_answers(
+    accu: u128,
+    last_pattern: Option<u128>,
+    position: usize,
+    program: &[u8],
+    possible_bit_patterns: &HashMap<u8, Vec<u128>>,
+    all_answers: &mut Vec<u128>,
+) {
+    // println!("accu: {:b}, position: {}", accu, position);
+    if position >= program.len() {
+        all_answers.push(accu);
+        return;
+    }
+    let target_num = program[position];
+    let possible = possible_bit_patterns
+        .get(&target_num)
+        .expect("there should be a bit pattern for every possible instruction");
+    for &pattern in possible.iter() {
+        // e.g. first pattern was     1010100 010
+        //     next pattern is    101 1010100
+        // overlap is first_pattern >> 3 == next_pattern - (next_pattern >> 7 << 7)
+        let increment = (pattern >> 7) << 7 << (3 * position);
+        let mut new_accu = pattern;
+        if let Some(last_pattern) = last_pattern {
+            if (last_pattern >> 3) != (pattern - ((pattern >> 7) << 7)) {
+                continue;
+            } else {
+                new_accu = accu + increment;
+            }
+        }
+        construct_answers(
+            new_accu,
+            Some(pattern),
+            position + 1,
+            program,
+            possible_bit_patterns,
+            all_answers,
+        );
+    }
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
     let mut computer = Computer::from(input);
-    let mut program_output = String::from("failed");
-    let mut register_a = 0;
-    // while program_output == String::from("failed") {
-    while register_a < 255 {
-        register_a += 1;
-        computer.reset(register_a);
-        program_output = computer.run_program(&input.program, true)?;
-        println!("reg_a: {:08b}, output: {}", register_a, program_output);
-        // if register_a % 1_000_000 == 0 {
-        //     println!("reg_a = {}", register_a);
-        // }
+    let mut possible_bit_patterns: HashMap<u8, Vec<u128>> = HashMap::new();
+    for bit_pattern in 0b0000000000..=0b1111111111 {
+        computer.reset(bit_pattern);
+        let program_output = computer.run_program(&input.program)?;
+        assert!(program_output.len() > 0);
+        possible_bit_patterns
+            .entry(program_output[0])
+            .and_modify(|v| v.push(bit_pattern))
+            .or_insert(vec![bit_pattern]);
     }
-    register_a = u128::from_str_radix("1111111111", 2)?;
-    computer.reset(register_a);
-    program_output = computer.run_program(&input.program, true)?;
-    println!("reg_a: {:b} = {}", register_a, program_output);
-    Ok(Answer::Num(register_a as i128))
+    for patterns in possible_bit_patterns.values_mut() {
+        patterns.sort();
+    }
+    let mut all_answers = Vec::new();
+    construct_answers(
+        0,
+        None,
+        0,
+        &input.program,
+        &possible_bit_patterns,
+        &mut all_answers,
+    );
+    all_answers.sort();
+    computer.reset(all_answers[0]);
+    let program_output = computer.run_program(&input.program)?;
+    println!(
+        "program_output: {}",
+        Computer::output_string(&program_output)
+    );
+    assert_eq!(program_output, input.program);
+    Ok(Answer::Num(all_answers[0] as i128))
 
-    // last stopped at 5889000000
-    // 3^30 == 205891132094649
+    // 164545346498237
+    // 164542125272765
 
-    // 111
-    // 001
-    // 110
-    // 001
-    // 111
-
-    // 010
-    // 001
-    // 011
-
-    // Program: 2,4,1,1,7,5,1,5,0,3,4,3,5,5,3,0
-    // 2411751503435530
+    // Program: 2,4,1,1,7,5,1,5,0,3,4,3,5,5,3,0 (2411751503435530)
     // 2,4
     // 1,1
     // 7,5
@@ -242,6 +267,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
     // bxc 3 (reg_b = reg_b ^ reg_c)
     // out 5 (output reg_b % 8)
     // jnz 0 (if a != 0 goto 0)
+    // => 10 bit patterns are considered for output at max!
 }
 
 // Quickly obtain answers by running
@@ -282,7 +308,7 @@ mod day17_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(164542125272765));
         Ok(())
     }
     #[bench]
