@@ -12,7 +12,7 @@ use std::{collections::HashSet, io};
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
     println!("part1: {}", part_one(&stdin, 1024, (71, 71))?);
-    println!("part2: {}", part_two(&stdin)?);
+    println!("part2: {}", part_two(&stdin, point!(71, 71))?);
     Ok(())
 }
 
@@ -21,9 +21,9 @@ pub fn part_one(input: &str, falling: usize, grid_size: (i128, i128)) -> Result<
     solve_one(&input, falling, grid_size)
 }
 
-pub fn part_two(input: &str) -> Result<Answer> {
+pub fn part_two(input: &str, grid_size: Point) -> Result<Answer> {
     let input = parse_input(input)?;
-    solve_two(&input)
+    solve_two(&input, grid_size)
 }
 
 struct Input {
@@ -106,9 +106,23 @@ fn solve_one(input: &Input, falling: usize, grid_size: (i128, i128)) -> Result<A
     Ok(Answer::Num(shortest_path))
 }
 
-fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+fn solve_two(input: &Input, grid_size: Point) -> Result<Answer> {
+    let Input { falling_bytes } = input;
+    let from = point!(0, 0);
+    let to = grid_size - point!(1, 1);
+    let mut grid = Grid::new(&grid_size);
+    let mut fall_idx = 0;
+    while let Some(byte) = falling_bytes.get(fall_idx) {
+        grid.add_obstruction(byte);
+        if grid.shortest_path(&from, &to).is_none() {
+            break;
+        }
+        fall_idx += 1;
+    }
+    let last_fallen = falling_bytes
+        .get(fall_idx)
+        .ok_or(anyhow!("path was never blocked"))?;
+    Ok(Answer::Str(format!("{},{}", last_fallen.x, last_fallen.y)))
 }
 
 // Quickly obtain answers by running
@@ -142,13 +156,13 @@ mod day18_tests {
     }
     #[test]
     fn test_two() -> Result<()> {
-        let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        let answer = super::part_two(&TEST, point!(7, 7))?;
+        assert_eq!(answer, Answer::from("6,1"));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
-        let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        let answer = super::part_two(&INPUT, point!(71, 71))?;
+        assert_eq!(answer, Answer::from("46,28"));
         Ok(())
     }
     #[bench]
