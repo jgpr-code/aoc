@@ -3,7 +3,7 @@ extern crate test;
 
 use anyhow::{anyhow, Result};
 use common::{regex::Regex, Answer};
-use std::io;
+use std::{collections::HashMap, io};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -59,9 +59,52 @@ fn solve_one(input: &Input) -> Result<Answer> {
     Ok(Answer::Num(answer as i128))
 }
 
+struct Matcher {
+    vocabular: Vec<String>,
+    counted: HashMap<String, usize>,
+}
+impl Matcher {
+    fn with_vocabular(vocabular: &[String]) -> Self {
+        Self {
+            vocabular: vocabular.iter().cloned().collect(),
+            counted: HashMap::new(),
+        }
+    }
+    fn count_possibilities(&mut self, rest: String) -> usize {
+        if rest.is_empty() {
+            return 1;
+        }
+        if let Some(&count) = self.counted.get(&rest) {
+            return count;
+        }
+        let mut possibilities = 0;
+        let vocabular_len = self.vocabular.len();
+        for word_idx in 0..vocabular_len {
+            let word = &self.vocabular[word_idx];
+            let len = word.len();
+            if len > rest.len() {
+                continue;
+            }
+            if word[..] == rest[0..len] {
+                possibilities += self.count_possibilities(String::from(&rest[len..]));
+            }
+        }
+        self.counted.insert(rest, possibilities);
+        return possibilities;
+    }
+}
+
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input {
+        vocabular,
+        sentences,
+    } = input;
+    let mut matcher = Matcher::with_vocabular(vocabular);
+    let mut total = 0;
+    for sentence in sentences {
+        total += matcher.count_possibilities(sentence.clone());
+    }
+    Ok(Answer::Num(total as i128))
 }
 
 // Quickly obtain answers by running
@@ -96,12 +139,12 @@ mod day19_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(16));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(600639829400603));
         Ok(())
     }
     #[bench]
