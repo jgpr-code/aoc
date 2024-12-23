@@ -38,7 +38,7 @@ impl Point {
     pub fn get_4_neighbors(&self, bound: &Point) -> Vec<Point> {
         let mut neighbors = Vec::new();
         for delta in NEIGH4 {
-            let npoint = *self + &delta;
+            let npoint = *self + delta;
             if npoint.inside_point_bound(bound) {
                 neighbors.push(npoint);
             }
@@ -54,18 +54,18 @@ impl From<&(i128, i128)> for Point {
         }
     }
 }
-impl Add<&Point> for Point {
+impl Add<Point> for Point {
     type Output = Point;
-    fn add(self, rhs: &Point) -> Self::Output {
+    fn add(self, rhs: Point) -> Self::Output {
         Point {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
         }
     }
 }
-impl Sub<&Point> for Point {
+impl Sub<Point> for Point {
     type Output = Point;
-    fn sub(self, rhs: &Point) -> Self::Output {
+    fn sub(self, rhs: Point) -> Self::Output {
         Point {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
@@ -81,9 +81,9 @@ impl Mul<i128> for Point {
         }
     }
 }
-impl Mul<&Point> for i128 {
+impl Mul<Point> for i128 {
     type Output = Point;
-    fn mul(self, rhs: &Point) -> Self::Output {
+    fn mul(self, rhs: Point) -> Self::Output {
         Point {
             x: self * rhs.x,
             y: self * rhs.y,

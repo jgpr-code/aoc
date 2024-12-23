@@ -69,14 +69,14 @@ impl Grid {
     fn add_obstruction(&mut self, at: &Point) {
         self.obstructions.insert(*at);
     }
-    fn shortest_path(&self, from: &Point, to: &Point) -> i128 {
+    fn shortest_path(&self, from: &Point, to: &Point) -> Option<i128> {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
         queue.push_back((*from, 0));
         visited.insert(*from);
         while let Some((p, cost)) = queue.pop_front() {
             if p == *to {
-                return cost;
+                return Some(cost);
             }
             for neighbor in self.get_neighbors(&p).into_iter() {
                 if !visited.contains(&neighbor) {
@@ -85,7 +85,7 @@ impl Grid {
                 }
             }
         }
-        return i128::MAX;
+        None
     }
 }
 
@@ -98,10 +98,12 @@ fn solve_one(input: &Input, falling: usize, grid_size: (i128, i128)) -> Result<A
             .ok_or(anyhow!("no byte left to fall (at {})", i))?;
         grid.add_obstruction(byte);
     }
-    Ok(Answer::Num(grid.shortest_path(
-        &point!(0, 0),
-        &(point!(grid_size) - &point!(1, 1)),
-    )))
+    let from = point!(0, 0);
+    let to = point!(grid_size) - point!(1, 1);
+    let shortest_path = grid
+        .shortest_path(&from, &to)
+        .ok_or(anyhow!("there still must be a path"))?;
+    Ok(Answer::Num(shortest_path))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
