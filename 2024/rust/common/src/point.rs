@@ -24,7 +24,7 @@ macro_rules! point {
 }
 pub use crate::point;
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Point {
     pub x: i128,
     pub y: i128,
