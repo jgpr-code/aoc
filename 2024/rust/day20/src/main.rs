@@ -161,9 +161,37 @@ fn solve_one(grid: &Input) -> Result<Answer> {
     ))
 }
 
-fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+fn solve_two(grid: &Input) -> Result<Answer> {
+    let start = grid.get_unique_point('S')?;
+    let end = grid.get_unique_point('E')?;
+    let (_, cost_map) = grid.bfs_4_neighbors_shortest_paths(start, end, '#');
+    let mut cheats = Vec::new();
+    for (p, cost) in cost_map.iter() {
+        let top_left = *p + (20 * point::UP_LEFT);
+        let bottom_right = *p + (20 * point::DOWN_RIGHT);
+        for y in top_left.y..=bottom_right.y {
+            for x in top_left.x..=bottom_right.x {
+                let target = point!(x, y);
+                let dx = i128::abs(p.x - target.x);
+                let dy = i128::abs(p.y - target.y);
+                if dx + dy <= 20 && cost_map.contains_key(&target) {
+                    let cost_after_cheat = cost_map[&target] as i128;
+                    let cost = *cost as i128;
+                    let savings = cost_after_cheat - (cost + dx + dy);
+                    if savings >= 0 {
+                        cheats.push((savings, (*p, target)));
+                    }
+                }
+            }
+        }
+    }
+    // cheats.sort_by(|a, b| a.0.cmp(&b.0));
+    let cheats_50: Vec<(i128, (Point, Point))> =
+        cheats.iter().cloned().filter(|c| c.0 >= 50).collect();
+    println!("{}", cheat_statistics(&cheats_50));
+    Ok(Answer::Num(
+        cheats.iter().filter(|c| c.0 >= 100).count() as i128
+    ))
 }
 
 // Quickly obtain answers by running
@@ -203,7 +231,7 @@ mod day20_tests {
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(1033983));
         Ok(())
     }
     #[bench]
