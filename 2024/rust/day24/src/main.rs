@@ -25,7 +25,7 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum GateType {
     And,
     Or,
@@ -44,45 +44,45 @@ impl TryFrom<&str> for GateType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct Gate {
     name: String,
-    inputs: GateInputs,
+    inputs: (String, String),
     gate_type: GateType,
     value: Option<bool>,
 }
 impl Gate {
-    fn try_compute(&mut self) -> Result<()> {
-        let mut iter = self.inputs.0.values();
-        let a = iter
-            .next()
-            .ok_or(anyhow!("inputs must be of size 2"))?
-            .ok_or(anyhow!("value must be set"))?;
-        let b = iter
-            .next()
-            .ok_or(anyhow!("inputs must be of size 2"))?
-            .ok_or(anyhow!("value must be set"))?;
+    fn compute(&mut self, inputs: (bool, bool)) {
+        let (lhs, rhs) = inputs;
         self.value = Some(match self.gate_type {
-            GateType::And => a && b,
-            GateType::Or => a || b,
-            GateType::Xor => a ^ b,
+            GateType::And => lhs && rhs,
+            GateType::Or => lhs || rhs,
+            GateType::Xor => lhs ^ rhs,
         });
-        Ok(())
     }
-}
-
-#[derive(Clone)]
-struct GateInputs(HashMap<String, Option<bool>>);
-impl GateInputs {
-    fn fully_initialized(&self) -> bool {
-        assert!(self.0.len() == 2);
-        self.0.values().all(|v| v.is_some())
-    }
-    fn get_input_mut(&mut self, name: &str) -> Result<&mut Option<bool>> {
-        Ok(self
-            .0
-            .get_mut(name)
-            .ok_or(anyhow!("gate input {} must be present", name))?)
+    // fn try_compute(&mut self, inputs: &HashMap<String, bool>, gates: &HashMap<String, Gate>) -> Result<()> {
+    //     let inputs = self.get_inputs(inputs, gates).ok_or(anyhow!("both inputs must be initialized"))?;
+    //     self.compute(inputs);
+    //     Ok(())
+    // }
+    fn get_inputs(
+        &self,
+        inputs: &HashMap<String, bool>,
+        gates: &HashMap<String, Gate>,
+    ) -> Option<(bool, bool)> {
+        let lhs = inputs
+            .get(&self.inputs.0)
+            .cloned()
+            .or(gates.get(&self.inputs.0).and_then(|g| g.value));
+        let rhs = inputs
+            .get(&self.inputs.1)
+            .cloned()
+            .or(gates.get(&self.inputs.1).and_then(|g| g.value));
+        if lhs.is_some() && rhs.is_some() {
+            Some((lhs.unwrap(), rhs.unwrap()))
+        } else {
+            None
+        }
     }
 }
 
@@ -94,14 +94,11 @@ impl TryFrom<&str> for Gate {
             .captures(value)
             .ok_or(anyhow!("not a valid gate_str {}", value))?;
         let name = String::from(&caps[4]);
-        let inputs = HashMap::from([
-            (String::from(&caps[1]), None),
-            (String::from(&caps[3]), None),
-        ]);
+        let inputs = (String::from(&caps[1]), String::from(&caps[3]));
         let gate_type = GateType::try_from(&caps[2])?;
         Ok(Gate {
             name,
-            inputs: GateInputs(inputs),
+            inputs,
             gate_type,
             value: None,
         })
@@ -110,13 +107,17 @@ impl TryFrom<&str> for Gate {
 
 #[derive(Clone)]
 struct Circuit {
-    gate_values: HashMap<String, Option<bool>>,
     inputs: HashMap<String, bool>,
-    gates: HashMap<String, Gate>,             // foo -> Gate foo
-    gate_graph: HashMap<String, Vec<String>>, // foo -> all gates with foo as input
+    gates: HashMap<String, Gate>,
+    consumers: HashMap<String, Vec<String>>,
 }
 
 impl Circuit {
+    fn get_gate<'a>(gates: &'a HashMap<String, Gate>, gate_name: &str) -> Result<&'a Gate> {
+        Ok(gates
+            .get(gate_name)
+            .ok_or(anyhow!("gate {} must be present", gate_name))?)
+    }
     fn get_gate_mut<'a>(
         gates: &'a mut HashMap<String, Gate>,
         gate_name: &str,
@@ -125,40 +126,54 @@ impl Circuit {
             .get_mut(gate_name)
             .ok_or(anyhow!("gate {} must be present", gate_name))?)
     }
-    fn simulate(&mut self) -> Result<()> {
-        let mut fully_initialized_gates = VecDeque::new();
-        for (input_name, input_value) in self.inputs.iter() {
-            if let Some(has_input) = self.gate_graph.get(input_name) {
-                for gate_name in has_input.iter() {
-                    let gate = Self::get_gate_mut(&mut self.gates, gate_name)?;
-                    *gate.inputs.get_input_mut(input_name)? = Some(*input_value);
-                    if gate.inputs.fully_initialized() {
-                        gate.try_compute()?;
-                        fully_initialized_gates.push_back((
-                            gate_name.clone(),
-                            gate.value.ok_or(anyhow!("gate must be initialized"))?,
-                        ));
-                    }
-                }
-            }
-        }
-        while let Some((initialized_gate_name, initialized_value)) =
-            fully_initialized_gates.pop_front()
-        {
-            if let Some(has_input) = self.gate_graph.get(&initialized_gate_name) {
-                for gate_name in has_input.iter() {
-                    let gate = Self::get_gate_mut(&mut self.gates, gate_name)?;
-                    *gate.inputs.get_input_mut(&gate_name)? = Some(initialized_value);
-                    if gate.inputs.fully_initialized() {
-                        gate.try_compute()?;
-                        fully_initialized_gates.push_back(gate_name.clone());
-                    }
+    fn update_consumers(
+        &mut self,
+        input_name: &str,
+        initialized: &mut VecDeque<String>,
+    ) -> Result<()> {
+        if let Some(consumer_names) = self.consumers.get(input_name) {
+            for consumer_name in consumer_names.iter() {
+                let consumer = Self::get_gate(&self.gates, consumer_name)?;
+                if let Some(inputs) = consumer.get_inputs(&self.inputs, &self.gates) {
+                    let consumer = Self::get_gate_mut(&mut self.gates, consumer_name)?;
+                    consumer.compute(inputs);
+                    initialized.push_back(consumer_name.clone());
                 }
             }
         }
         Ok(())
     }
-    fn get(pre: char) -> i128 {}
+    fn simulate(&mut self) -> Result<()> {
+        let mut initialized = VecDeque::new();
+        let input_keys: Vec<String> = self.inputs.keys().cloned().collect();
+        for input_name in input_keys {
+            self.update_consumers(&input_name, &mut initialized)?;
+        }
+        while let Some(gate_name) = initialized.pop_front() {
+            self.update_consumers(&gate_name, &mut initialized)?;
+        }
+        Ok(())
+    }
+    fn get_z(&self) -> Result<i128> {
+        let mut z_gates: Vec<Gate> = self
+            .gates
+            .values()
+            .filter(|&g| g.name.starts_with("z"))
+            .cloned()
+            .collect();
+        z_gates.sort_by(|a, b| b.name.cmp(&a.name));
+        let mut z_str = String::new();
+        for z in z_gates.iter().map(|g| g.value) {
+            let z = z.ok_or(anyhow!("all z gates must be initialized"))?;
+            if z {
+                z_str.push('1');
+            } else {
+                z_str.push('0');
+            }
+        }
+        let z = i128::from_str_radix(&z_str, 2)?;
+        Ok(z)
+    }
 }
 
 type Input = Circuit;
@@ -171,7 +186,7 @@ fn parse_input(input: &str) -> Result<Input> {
 
     let mut inputs = HashMap::new();
     let mut gates = HashMap::new();
-    let mut gate_graph: HashMap<String, Vec<String>> = HashMap::new();
+    let mut consumers: HashMap<String, Vec<String>> = HashMap::new();
 
     for line in inputs_str.lines() {
         let (name, value) = line
@@ -182,18 +197,18 @@ fn parse_input(input: &str) -> Result<Input> {
     }
     for line in gates_str.lines() {
         let gate = Gate::try_from(line)?;
-        for gate_input in gate.inputs.0.keys().cloned() {
-            gate_graph
+        for gate_input in vec![gate.inputs.0.clone(), gate.inputs.1.clone()].into_iter() {
+            consumers
                 .entry(gate_input)
                 .and_modify(|v| v.push(gate.name.clone()))
                 .or_insert(vec![gate.name.clone()]);
         }
         gates.insert(gate.name.clone(), gate);
     }
-    Ok(Input {
+    Ok(Circuit {
         inputs,
         gates,
-        gate_graph,
+        consumers,
     })
 }
 
@@ -210,10 +225,7 @@ fn parse_bool(bool_str: &str) -> Result<bool> {
 fn solve_one(input: &Input) -> Result<Answer> {
     let mut circuit = input.clone();
     circuit.simulate()?;
-    let x = circuit.get('x')?;
-    let y = circuit.get('y')?;
-    let z = circuit.get('z')?;
-    Ok(Answer::Num(-1))
+    Ok(Answer::Num(circuit.get_z()?))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -237,12 +249,12 @@ mod day24_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(2024));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(49430469426918));
         Ok(())
     }
     #[bench]
