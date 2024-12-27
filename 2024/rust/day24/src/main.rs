@@ -51,7 +51,7 @@ impl fmt::Display for GateType {
             "{}",
             match self {
                 GateType::And => "AND",
-                GateType::Or => "OR",
+                GateType::Or => "OR ",
                 GateType::Xor => "XOR",
             }
         )
@@ -127,7 +127,7 @@ impl Gate {
         Self::rename_gates(gates, gate_b, gate_a);
         Self::rename_gates(gates, "TEMP", gate_b);
     }
-    fn get_renaming(&self) -> Option<(String, String)> {
+    fn get_renamings(&self) -> Vec<(String, String)> {
         // N = 00
         // x00 XOR y00 -> z00 (present in input)
         // x00 AND y00 -> c01
@@ -137,32 +137,46 @@ impl Gate {
         // XN XOR cN -> zN
         // XN AND cN -> BN
         // AN OR BN -> cN+1
-        let mut new_name = None;
+        let mut renamings = Vec::new();
         if let Some(stage) = self.get_stage() {
-            let def_str = &self.to_string().replace(&format!("{:02}", stage), "N")[..9];
+            let def_str = &self.to_string().replace(&format!("{:02}", stage), "N")[..10];
             if stage == 0 {
                 if def_str == "xN AND yN" {
-                    new_name = Some(String::from("c01"));
+                    renamings.push((self.name.clone(), String::from("c01")));
                 }
             } else {
-                new_name = Some(match def_str {
-                    "xN XOR yN" => format!("X{:02}", stage),
-                    "xN AND yN" => format!("A{:02}", stage),
-                    "XN XOR cN" => format!("z{:02}", stage),
-                    "XN AND cN" => format!("B{:02}", stage),
-                    "AN OR BN " => format!("c{:02}", stage + 1),
-                    _ => return None,
-                });
+                match &def_str[..] {
+                    "xN XOR yN " => renamings.push((self.name.clone(), format!("X{:02}", stage))),
+                    "xN AND yN " => renamings.push((self.name.clone(), format!("A{:02}", stage))),
+                    "XN XOR cN " => renamings.push((self.name.clone(), format!("z{:02}", stage))),
+                    "XN AND cN " => renamings.push((self.name.clone(), format!("B{:02}", stage))),
+                    "AN OR  BN " => {
+                        renamings.push((self.name.clone(), format!("c{:02}", stage + 1)))
+                    }
+                    _ => {}
+                };
+                match (&def_str[..6], &def_str[7..10]) {
+                    ("XN XOR", old) | ("XN AND", old) if old != "cN " => renamings.push((
+                        old.replace("N ", &format!("{:02}", stage)),
+                        format!("c{:02}", stage),
+                    )),
+                    ("AN OR ", old) if old != "BN " => {
+                        renamings.push((
+                            old.replace("N ", &format!("{:02}", stage)),
+                            format!("B{:02}", stage),
+                        ));
+                    }
+                    ("BN OR ", old) if old != "AN " => {
+                        renamings.push((
+                            old.replace("N ", &format!("{:02}", stage)),
+                            format!("A{:02}", stage),
+                        ));
+                    }
+                    _ => {}
+                }
             }
         }
-        let old_name = self.name.clone();
-        return new_name.and_then(|new_name| {
-            if new_name == old_name {
-                None
-            } else {
-                Some((old_name, new_name))
-            }
-        });
+        return renamings.into_iter().filter(|r| r.0 != r.1).collect();
     }
     fn is_ripple_adder_gate(&self) -> Result<bool> {
         // assuming this is using a carry-ripple full adder
@@ -193,7 +207,7 @@ impl Gate {
                 || gate_str == "XN XOR cN -> zN"
                 || gate_str == "xN AND yN -> AN"
                 || gate_str == "XN AND cN -> BN"
-                || gate_str == "AN OR BN -> cN1"
+                || gate_str == "AN OR  BN -> cN1"
         })
     }
 }
@@ -368,38 +382,81 @@ fn solve_two(input: &Input) -> Result<Answer> {
 
     let mut gates: Vec<Gate> = input.gates.values().cloned().collect();
     let mut all_swaps: Vec<(String, String)> = Vec::new();
+    let mut old_names = HashMap::new();
+    let mut i = 0;
     loop {
-        let (swaps, renamings): (Vec<_>, Vec<_>) = gates
-            .iter()
-            .filter_map(|g| g.get_renaming())
-            .partition(|r| Gate::is_swap(r));
-        if swaps.len() == 0 && renamings.len() == 0 {
+        if i > 1000 {
             break;
         }
+        i += 1;
+        let (swaps, renamings): (Vec<_>, Vec<_>) = gates
+            .iter()
+            .flat_map(|g| g.get_renamings())
+            .partition(|r| Gate::is_swap(r));
         let mut was_swapped = HashSet::new();
         for swap in swaps {
             let rswap = (swap.1.clone(), swap.0.clone());
-            if was_swapped.contains(&swap) || was_swapped.contains(&rswap) {
+            if was_swapped.contains(&rswap) {
                 continue;
             }
             was_swapped.insert(swap.clone());
-            was_swapped.insert(rswap);
             let (swap_a, swap_b) = swap;
             Gate::swap_gates(&mut gates, &swap_a, &swap_b);
             all_swaps.push((swap_a, swap_b))
         }
         for (gate_from, gate_to) in renamings {
             Gate::rename_gates(&mut gates, &gate_from, &gate_to);
+            if gate_to == "A16" {
+                println!("{} -> A16", gate_from);
+            }
+            if let Some(old_gate_from) = old_names.insert(gate_to.clone(), gate_from.clone()) {
+                if old_gate_from != gate_from {
+                    println!(
+                        "mapping both {} and {} to {}",
+                        old_gate_from, &gate_from, &gate_to
+                    );
+                }
+            }
         }
     }
-    println!("{:?}", all_swaps);
-    for gate in gates
-        .iter()
-        .filter(|g| !g.is_ripple_adder_gate().unwrap_or(false))
+    // println!("all_swaps: {:?}", all_swaps);
+    gates.sort_by(|a, b| a.get_stage().cmp(&b.get_stage()));
+    let mut new_line = 3;
+    for gate in gates.iter()
+    // .filter(|g| !g.is_ripple_adder_gate().unwrap_or(false))
     {
         println!("{}", gate);
+        new_line += 1;
+        if new_line % 5 == 0 {
+            println!();
+        }
     }
-    Ok(Answer::Num(-1))
+
+    // by manual inspection
+    // xN XOR yN -> XN
+    // xN AND yN -> AN
+    // XN XOR cN -> zN
+    // XN AND cN -> BN
+    // AN OR BN -> cN+1
+    // => c24,z23, B36,z36, A11,X11, A16,z16
+    old_names.insert(String::from("A16"), String::from("pbv"));
+    let mut answer = vec![
+        String::from(&old_names["c24"]),
+        String::from("z23"),
+        String::from(&old_names["B36"]),
+        String::from("z36"),
+        String::from(&old_names["A11"]),
+        String::from(&old_names["X11"]),
+        String::from(&old_names["A16"]),
+        String::from("z16"),
+    ];
+
+    println!(
+        "old[B16] = {}, old[c17] = {}",
+        old_names["B16"], old_names["c17"]
+    );
+    answer.sort();
+    Ok(Answer::Str(answer.join(",")))
 }
 
 // Quickly obtain answers by running
@@ -439,7 +496,7 @@ mod day24_tests {
     // }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::from("fbq,pbv,qff,qnw,qqp,z16,z23,z36"));
         Ok(())
     }
     #[bench]
