@@ -4,7 +4,6 @@ extern crate test;
 use anyhow::{anyhow, Result};
 use common::{regx, Answer};
 use std::{
-    cmp::Ordering,
     collections::{HashMap, HashSet, VecDeque},
     fmt, io,
 };
@@ -178,6 +177,7 @@ impl Gate {
         }
         return renamings.into_iter().filter(|r| r.0 != r.1).collect();
     }
+    #[allow(unused)]
     fn is_ripple_adder_gate(&self) -> Result<bool> {
         // assuming this is using a carry-ripple full adder
         // 00 is special (only 2 gates instead of 5)
