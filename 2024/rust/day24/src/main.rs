@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 use common::{regx, Answer};
 use std::{
     cmp::Ordering,
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fmt, io,
 };
 
@@ -93,7 +93,7 @@ impl Gate {
             None
         }
     }
-    fn gate_stage(&self) -> Option<i32> {
+    fn get_stage(&self) -> Option<i32> {
         let name_str = &self.name[1..3];
         if let Some(n) = i32::from_str_radix(name_str, 10).ok() {
             if name_str.starts_with("c") {
@@ -105,6 +105,64 @@ impl Gate {
         i32::from_str_radix(a_str, 10)
             .ok()
             .or(i32::from_str_radix(b_str, 10).ok())
+    }
+    fn rename(&mut self, gate_from: &str, gate_to: &str) {
+        let rename_fn = |field: &mut String| {
+            if *field == gate_from {
+                *field = String::from(gate_to);
+            }
+        };
+        rename_fn(&mut self.name);
+        rename_fn(&mut self.inputs.0);
+        rename_fn(&mut self.inputs.1);
+    }
+    fn rename_gates(gates: &mut [Gate], gate_from: &str, gate_to: &str) {
+        gates.iter_mut().for_each(|g| g.rename(gate_from, gate_to));
+    }
+    fn is_swap(renaming: &(String, String)) -> bool {
+        i32::from_str_radix(&renaming.0[1..3], 10).is_ok() || renaming.1.starts_with("z")
+    }
+    fn swap_gates(gates: &mut [Gate], gate_a: &str, gate_b: &str) {
+        Self::rename_gates(gates, gate_a, "TEMP");
+        Self::rename_gates(gates, gate_b, gate_a);
+        Self::rename_gates(gates, "TEMP", gate_b);
+    }
+    fn get_renaming(&self) -> Option<(String, String)> {
+        // N = 00
+        // x00 XOR y00 -> z00 (present in input)
+        // x00 AND y00 -> c01
+        // N > 00
+        // xN XOR yN -> XN
+        // xN AND yN -> AN
+        // XN XOR cN -> zN
+        // XN AND cN -> BN
+        // AN OR BN -> cN+1
+        let mut new_name = None;
+        if let Some(stage) = self.get_stage() {
+            let def_str = &self.to_string().replace(&format!("{:02}", stage), "N")[..9];
+            if stage == 0 {
+                if def_str == "xN AND yN" {
+                    new_name = Some(String::from("c01"));
+                }
+            } else {
+                new_name = Some(match def_str {
+                    "xN XOR yN" => format!("X{:02}", stage),
+                    "xN AND yN" => format!("A{:02}", stage),
+                    "XN XOR cN" => format!("z{:02}", stage),
+                    "XN AND cN" => format!("B{:02}", stage),
+                    "AN OR BN " => format!("c{:02}", stage + 1),
+                    _ => return None,
+                });
+            }
+        }
+        let old_name = self.name.clone();
+        return new_name.and_then(|new_name| {
+            if new_name == old_name {
+                None
+            } else {
+                Some((old_name, new_name))
+            }
+        });
     }
     fn is_ripple_adder_gate(&self) -> Result<bool> {
         // assuming this is using a carry-ripple full adder
@@ -293,76 +351,6 @@ fn solve_one(input: &Input) -> Result<Answer> {
     Ok(Answer::Num(circuit.get_z()?))
 }
 
-/// applies new_names and returns (old_name, new_name) required additional renaming
-fn rename_gate(gate: &mut Gate, new_names: &HashMap<String, String>) -> Option<(String, String)> {
-    if let Some(new_name) = new_names.get(&gate.inputs.0) {
-        gate.inputs.0 = new_name.clone();
-    }
-    if let Some(new_name) = new_names.get(&gate.inputs.1) {
-        gate.inputs.1 = new_name.clone();
-    }
-    if let Some(new_name) = new_names.get(&gate.name) {
-        gate.name = new_name.clone();
-    }
-    if gate.name.starts_with("z") {
-        if gate.inputs.0.starts_with("X") {
-            let n = i32::from_str_radix(&gate.inputs.0[1..3], 10).expect("must be XN");
-            let new_name = format!("c{:02}", n);
-            if new_name != gate.inputs.1 {
-                return Some((gate.inputs.1.clone(), new_name));
-            }
-        }
-        if gate.inputs.1.starts_with("X") {
-            let n = i32::from_str_radix(&gate.inputs.1[1..3], 10).expect("must be XN");
-            let new_name = format!("c{:02}", n);
-            if new_name != gate.inputs.0 {
-                return Some((gate.inputs.0.clone(), new_name));
-            }
-        }
-    }
-    if gate.name.starts_with("B") {
-        if gate.inputs.0.starts_with("X") {
-            let n = i32::from_str_radix(&gate.inputs.0[1..3], 10).expect("must be XN");
-            let new_name = format!("c{:02}", n);
-            if new_name != gate.inputs.1 {
-                return Some((gate.inputs.1.clone(), new_name));
-            }
-        }
-        if gate.inputs.1.starts_with("X") {
-            let n = i32::from_str_radix(&gate.inputs.1[1..3], 10).expect("must be XN");
-            let new_name = format!("c{:02}", n);
-            if new_name != gate.inputs.0 {
-                return Some((gate.inputs.0.clone(), new_name));
-            }
-        }
-    }
-    let mut gate_str = gate.to_string();
-    let n_str = &gate_str[1..3];
-    if let Some(n) = i32::from_str_radix(&n_str, 10).ok() {
-        gate_str = gate_str.replace(n_str, "N");
-        let def_str = &gate_str[..9];
-        if n == 0 {
-            if def_str == "xN AND yN" {
-                return Some((gate.name.clone(), String::from("c01")));
-            } else {
-                return None;
-            }
-        } else {
-            let new_name = match def_str {
-                "xN XOR yN" => format!("X{:02}", n),
-                "xN AND yN" => format!("A{:02}", n),
-                // "XN XOR cN" => format!("z{:02}", n),
-                "XN AND cN" => format!("B{:02}", n),
-                "AN OR BN " => format!("c{:02}", n + 1),
-                _ => return None,
-            };
-            return Some((gate.name.clone(), new_name));
-        }
-    } else {
-        return None;
-    }
-}
-
 fn solve_two(input: &Input) -> Result<Answer> {
     // assuming this is using a carry-ripple full adder
     // 00 is special (only 2 gates instead of 5)
@@ -372,76 +360,46 @@ fn solve_two(input: &Input) -> Result<Answer> {
     // N > 00
     // xN XOR yN -> XN
     // xN AND yN -> AN
-
     // XN XOR cN -> zN
     // XN AND cN -> BN
     // AN OR BN -> cN+1
 
     // total of 222 = (5 * 45) - 3 (because of 00 case)
 
-    // algo outline: rename things until all makes sense, then check for inconsistent gates
-    let mut old_names = HashMap::new();
-    let mut new_names = HashMap::new();
     let mut gates: Vec<Gate> = input.gates.values().cloned().collect();
+    let mut all_swaps: Vec<(String, String)> = Vec::new();
     loop {
-        println!("processing");
-        let renamings: Vec<(String, String)> = gates
-            .iter_mut()
-            .map(|gate| rename_gate(gate, &new_names))
-            .filter(|mapping| mapping.is_some())
-            .map(|mapping| mapping.unwrap())
-            .collect();
-        if renamings.iter().filter(|(a, b)| a != b).count() == 0 {
+        let (swaps, renamings): (Vec<_>, Vec<_>) = gates
+            .iter()
+            .filter_map(|g| g.get_renaming())
+            .partition(|r| Gate::is_swap(r));
+        if swaps.len() == 0 && renamings.len() == 0 {
             break;
         }
-        for (old_name, new_name) in renamings {
-            println!("{} -> {}", old_name, new_name);
-            if old_name == new_name {
+        let mut was_swapped = HashSet::new();
+        for swap in swaps {
+            let rswap = (swap.1.clone(), swap.0.clone());
+            if was_swapped.contains(&swap) || was_swapped.contains(&rswap) {
                 continue;
             }
-            old_names.insert(new_name.clone(), old_name.clone());
-            new_names.insert(old_name, new_name);
+            was_swapped.insert(swap.clone());
+            was_swapped.insert(rswap);
+            let (swap_a, swap_b) = swap;
+            Gate::swap_gates(&mut gates, &swap_a, &swap_b);
+            all_swaps.push((swap_a, swap_b))
+        }
+        for (gate_from, gate_to) in renamings {
+            Gate::rename_gates(&mut gates, &gate_from, &gate_to);
         }
     }
-
-    gates.sort_by(|a, b| {
-        let a_str = a.to_string();
-        let an = i32::from_str_radix(&a_str[1..3], 10).unwrap_or(100);
-        let b_str = b.to_string();
-        let bn = i32::from_str_radix(&b_str[1..3], 10).unwrap_or(100);
-        let cmp = an.cmp(&bn);
-        if cmp == Ordering::Equal {
-            b_str.cmp(&a_str)
-        } else {
-            cmp
-        }
-    });
-    for gate in gates.iter() {
-        println!("{}", gate);
-    }
-    let mut answer = Vec::new();
+    println!("{:?}", all_swaps);
     for gate in gates
         .iter()
-        .filter(|gate| !gate.is_ripple_adder_gate().unwrap_or(false))
-        .map(|g| {
-            let mut oldest_name = g.name.clone();
-            while let Some(older_name) = old_names.get(&oldest_name) {
-                oldest_name = older_name.clone();
-                let c = &oldest_name[0..1];
-                // match c {
-                //     "A" | "B" | "X" => {}
-                //     "c" if i32::from_str_radix(&oldest_name[1..3], 10).is_ok() => {}
-                //     _ => break,
-                // }
-                println!("oldest_name {}", oldest_name);
-            }
-            return oldest_name;
-        })
+        .filter(|g| !g.is_ripple_adder_gate().unwrap_or(false))
     {
-        answer.push(gate);
+        println!("{}", gate);
     }
-    answer.sort();
-    Ok(Answer::Str(answer.join(",")))
+    Ok(Answer::Num(-1))
 }
 
 // Quickly obtain answers by running
