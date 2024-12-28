@@ -203,8 +203,8 @@ fn solve_one(input: &Input) -> Result<Answer> {
     }
     // first try by not looking at all possibilities => 138560 => wrong (too high)
     // second answer 137420 => wrong (too high) ?
-    // third answer 134121 => wrong (still too high)
-    Ok(Answer::Num(sum + 1))
+    // third answer 134121 => wrong (still too high) LESSON: Don't add 1 to answer for NO REASON
+    Ok(Answer::Num(sum))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
