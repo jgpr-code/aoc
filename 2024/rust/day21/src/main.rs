@@ -9,7 +9,6 @@ use common::{
 use std::{
     collections::{HashMap, HashSet},
     io,
-    iter::repeat,
 };
 
 pub fn main() -> Result<()> {
@@ -48,7 +47,6 @@ enum KeypadType {
 }
 struct Keypad {
     keys: HashMap<char, Point>,
-    position: Point,
     keypad_type: KeypadType,
 }
 impl Keypad {
@@ -148,13 +146,8 @@ impl Keypad {
             ('1', point!(0, 2)), ('2', point!(1, 2)), ('3', point!(2, 2)),
                                  ('0', point!(1, 3)), ('A', point!(2, 3)),
         ]);
-        let position = keys[&'A'];
         let keypad_type = KeypadType::Numeric;
-        Self {
-            keys,
-            position,
-            keypad_type,
-        }
+        Self { keys, keypad_type }
     }
     //     +---+---+
     //     | ^ |>A<|
@@ -167,13 +160,8 @@ impl Keypad {
                                  ('^', point!(1, 0)), ('A', point!(2, 0)),
             ('<', point!(0, 1)), ('v', point!(1, 1)), ('>', point!(2, 1)),
         ]);
-        let position = keys[&'A'];
         let keypad_type = KeypadType::Directional;
-        Self {
-            keys,
-            position,
-            keypad_type,
-        }
+        Self { keys, keypad_type }
     }
 }
 
@@ -181,29 +169,30 @@ fn code_value(code: &str) -> i128 {
     i128::from_str_radix(&code[0..3], 10).unwrap_or(0)
 }
 
-fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { codes } = input;
+fn code_complexity(code: &str, robots: usize) -> i128 {
     let numeric_pad = Keypad::new_numeric();
     let directional_pad = Keypad::new_directional();
+    let typed_on_numeric_pad = numeric_pad.shortest_word_sequences('A', code);
+    let mut last_stage = typed_on_numeric_pad;
+    for _stage in 0..robots {
+        last_stage = last_stage
+            .iter()
+            .flat_map(|word| directional_pad.shortest_word_sequences('A', word))
+            .collect();
+    }
+    let mut minimal_length = usize::MAX;
+    for tm in last_stage {
+        minimal_length = usize::min(minimal_length, tm.len());
+    }
+    minimal_length as i128 * code_value(code)
+}
+
+fn solve_one(input: &Input) -> Result<Answer> {
+    let Input { codes } = input;
     let mut sum = 0;
     for code in codes {
-        let mut minimal_length = usize::MAX;
-        let typed_by_first = numeric_pad.shortest_word_sequences('A', code);
-        for tf in typed_by_first.iter() {
-            let typed_by_second = directional_pad.shortest_word_sequences('A', tf);
-            for ts in typed_by_second.iter() {
-                let typed_by_me = directional_pad.shortest_word_sequences('A', ts);
-                for tm in typed_by_me.iter() {
-                    minimal_length = usize::min(minimal_length, tm.len());
-                }
-            }
-        }
-        println!("code: {}, minimal_length: {}", code, minimal_length);
-        sum += minimal_length as i128 * code_value(code);
+        sum += code_complexity(code, 2);
     }
-    // first try by not looking at all possibilities => 138560 => wrong (too high)
-    // second answer 137420 => wrong (too high) ?
-    // third answer 134121 => wrong (still too high) LESSON: Don't add 1 to answer for NO REASON
     Ok(Answer::Num(sum))
 }
 
@@ -233,7 +222,7 @@ mod day21_tests {
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(134120));
         Ok(())
     }
     #[bench]
