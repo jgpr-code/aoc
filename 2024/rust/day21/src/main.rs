@@ -6,11 +6,7 @@ use common::{
     point::{point, Point},
     Answer,
 };
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    io, slice,
-    time::Instant,
-};
+use std::{collections::HashMap, io, time::Instant};
 
 pub fn main() -> Result<()> {
     let stdin = io::read_to_string(io::stdin())?;
@@ -276,12 +272,12 @@ mod day21_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(154115708116294));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(167389793580400));
         Ok(())
     }
     #[bench]
