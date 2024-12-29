@@ -49,43 +49,25 @@ enum KeypadType {
 struct Keypad {
     keys: HashMap<char, Point>,
     keypad_type: KeypadType,
-    cache: HashMap<(char, String), HashSet<String>>,
+    cache: HashMap<(char, String), String>,
 }
 impl Keypad {
-    fn shortest_word_sequences(&mut self, start: char, word: &str) -> HashSet<String> {
+    fn shortest_word_sequence(&mut self, start: char, word: &str) -> String {
         if word.len() == 0 {
-            return HashSet::from(["".to_string()]);
+            return String::from("");
         }
-        if let Some(possibilities) = self.cache.get(&(start, word.to_string())) {
-            return possibilities.clone();
+        if let Some(sequence) = self.cache.get(&(start, word.to_string())) {
+            return sequence.clone();
         }
         let to = word.chars().nth(0).unwrap();
-        let mut possibilities = HashSet::new();
-        let paths = self.shortest_move_sequences(start, to);
-        let remaining_possibilities = self.shortest_word_sequences(to, &word[1..]);
-        for path in paths {
-            for remaining_possibility in remaining_possibilities.iter() {
-                possibilities.insert(format!("{}A{}", path, remaining_possibility));
-            }
-        }
+        let move_sequence = self.shortest_move_sequence(start, to);
+        let remaining_sequence = self.shortest_word_sequence(to, &word[1..]);
+        let sequence = format!("{}A{}", move_sequence, remaining_sequence);
         self.cache
-            .insert((start, word.to_string()), possibilities.clone());
-        possibilities
+            .insert((start, word.to_string()), sequence.clone());
+        sequence
     }
-    fn shortest_move_sequences(&self, from: char, to: char) -> HashSet<String> {
-        // insight: just picking one sequence is wrong (trial and error approach)
-        // for example: directional keypad is at '<' and numeric keypad is at '5'
-        // to go from '5' to '1' we would use either '<v' or 'v<', but because the
-        // directional keypad starts at '<' the sequence '<v' is better!
-        // but does this really matter (seems like it doesn't OR IT DOES):
-        // e.g. typing 53 requires <^^A|^^<A >vA|v>A
-        // >vA requires vA<A>^A|vA<A^>A
-        // v>A requires v<A>A^A
-
-        // assumption: extra turns should be avoided, because they get expensive on the next keypad => probably this is wrong also
-        if from == to {
-            return HashSet::from(["".to_string()]);
-        }
+    fn shortest_move_sequence(&self, from: char, to: char) -> String {
         let from_position = self.keys[&from];
         let to_position = self.keys[&to];
         let delta = to_position - from_position;
@@ -95,7 +77,6 @@ impl Keypad {
         let cy = if delta.y >= 0 { 'v' } else { '^' };
         let ny = i128::abs(delta.y) as usize;
         let sy = cy.to_string().repeat(ny);
-        let mut possibilities = HashSet::new();
         match self.keypad_type {
             // 789
             // 456
@@ -104,16 +85,19 @@ impl Keypad {
             KeypadType::Numeric => match from {
                 '7' | '4' | '1' if to == '0' || to == 'A' => {
                     // change x then y
-                    possibilities.insert(format!("{sx}{sy}"));
+                    return format!("{sx}{sy}");
                 }
                 '0' | 'A' if to == '7' || to == '4' || to == '1' => {
                     // change y then x
-                    possibilities.insert(format!("{sy}{sx}"));
+                    return format!("{sy}{sx}");
                 }
                 _ => {
-                    // either works
-                    possibilities.insert(format!("{sx}{sy}"));
-                    possibilities.insert(format!("{sy}{sx}"));
+                    // either works do in this order < ^v >
+                    if sx.contains("<") {
+                        return format!("{sx}{sy}");
+                    } else {
+                        return format!("{sy}{sx}");
+                    }
                 }
             },
             //  ^A
@@ -121,20 +105,22 @@ impl Keypad {
             KeypadType::Directional => match from {
                 '<' => {
                     // change x then y
-                    possibilities.insert(format!("{sx}{sy}"));
+                    return format!("{sx}{sy}");
                 }
                 '^' | 'A' if to == '<' => {
                     // change y then x
-                    possibilities.insert(format!("{sy}{sx}"));
+                    return format!("{sy}{sx}");
                 }
                 _ => {
-                    // either works
-                    possibilities.insert(format!("{sx}{sy}"));
-                    possibilities.insert(format!("{sy}{sx}"));
+                    // either works do in this order < ^v >
+                    if sx.contains("<") {
+                        return format!("{sx}{sy}");
+                    } else {
+                        return format!("{sy}{sx}");
+                    }
                 }
             },
         }
-        possibilities
     }
     // +---+---+---+
     // | 7 | 8 | 9 |
@@ -188,25 +174,20 @@ fn code_complexity(code: &str, robots: usize) -> i128 {
     let mut numeric_pad = Keypad::new_numeric();
     let mut directional_pad = Keypad::new_directional();
     let mut start = Instant::now();
-    let typed_on_numeric_pad = numeric_pad.shortest_word_sequences('A', code);
+    let typed_on_numeric_pad = numeric_pad.shortest_word_sequence('A', code);
     let mut last_stage = typed_on_numeric_pad;
     for stage in 0..robots {
         println!(
-            "processing stage: {}, number of words in last_stage: {}, duration last_stage: {:?}",
+            "processing stage: {}, len last_stage: {}, duration last_stage: {:?}",
             stage,
             last_stage.len(),
             start.elapsed(),
         );
         start = Instant::now();
-        last_stage = last_stage
-            .iter()
-            .flat_map(|word| directional_pad.shortest_word_sequences('A', word))
-            .collect();
+        last_stage = directional_pad.shortest_word_sequence('A', &last_stage);
     }
     let mut minimal_length = usize::MAX;
-    for tm in last_stage {
-        minimal_length = usize::min(minimal_length, tm.len());
-    }
+    minimal_length = usize::min(minimal_length, last_stage.len());
     minimal_length as i128 * code_value(code)
 }
 
