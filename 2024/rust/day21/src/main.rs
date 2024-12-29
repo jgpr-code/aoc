@@ -209,9 +209,7 @@ fn code_complexity(code: &str, robots: usize) -> i128 {
         start = Instant::now();
         last_stage = directional_pad.shortest_word_sequence('A', &last_stage);
     }
-    let mut minimal_length = usize::MAX;
-    minimal_length = usize::min(minimal_length, last_stage.len());
-    minimal_length as i128 * code_value(code)
+    last_stage.len() as i128 * code_value(code)
 }
 
 fn dfs_code_complexity(code: &str, robots: usize) -> i128 {
