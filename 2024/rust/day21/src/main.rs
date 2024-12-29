@@ -9,6 +9,7 @@ use common::{
 use std::{
     collections::{HashMap, HashSet},
     io,
+    time::Instant,
 };
 
 pub fn main() -> Result<()> {
@@ -48,11 +49,15 @@ enum KeypadType {
 struct Keypad {
     keys: HashMap<char, Point>,
     keypad_type: KeypadType,
+    cache: HashMap<(char, String), HashSet<String>>,
 }
 impl Keypad {
-    fn shortest_word_sequences(&self, start: char, word: &str) -> HashSet<String> {
+    fn shortest_word_sequences(&mut self, start: char, word: &str) -> HashSet<String> {
         if word.len() == 0 {
             return HashSet::from(["".to_string()]);
+        }
+        if let Some(possibilities) = self.cache.get(&(start, word.to_string())) {
+            return possibilities.clone();
         }
         let to = word.chars().nth(0).unwrap();
         let mut possibilities = HashSet::new();
@@ -63,6 +68,8 @@ impl Keypad {
                 possibilities.insert(format!("{}A{}", path, remaining_possibility));
             }
         }
+        self.cache
+            .insert((start, word.to_string()), possibilities.clone());
         possibilities
     }
     fn shortest_move_sequences(&self, from: char, to: char) -> HashSet<String> {
@@ -147,7 +154,11 @@ impl Keypad {
                                  ('0', point!(1, 3)), ('A', point!(2, 3)),
         ]);
         let keypad_type = KeypadType::Numeric;
-        Self { keys, keypad_type }
+        Self {
+            keys,
+            keypad_type,
+            cache: HashMap::new(),
+        }
     }
     //     +---+---+
     //     | ^ |>A<|
@@ -161,7 +172,11 @@ impl Keypad {
             ('<', point!(0, 1)), ('v', point!(1, 1)), ('>', point!(2, 1)),
         ]);
         let keypad_type = KeypadType::Directional;
-        Self { keys, keypad_type }
+        Self {
+            keys,
+            keypad_type,
+            cache: HashMap::new(),
+        }
     }
 }
 
@@ -170,11 +185,19 @@ fn code_value(code: &str) -> i128 {
 }
 
 fn code_complexity(code: &str, robots: usize) -> i128 {
-    let numeric_pad = Keypad::new_numeric();
-    let directional_pad = Keypad::new_directional();
+    let mut numeric_pad = Keypad::new_numeric();
+    let mut directional_pad = Keypad::new_directional();
+    let mut start = Instant::now();
     let typed_on_numeric_pad = numeric_pad.shortest_word_sequences('A', code);
     let mut last_stage = typed_on_numeric_pad;
-    for _stage in 0..robots {
+    for stage in 0..robots {
+        println!(
+            "processing stage: {}, number of words in last_stage: {}, duration last_stage: {:?}",
+            stage,
+            last_stage.len(),
+            start.elapsed(),
+        );
+        start = Instant::now();
         last_stage = last_stage
             .iter()
             .flat_map(|word| directional_pad.shortest_word_sequences('A', word))
@@ -197,8 +220,12 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { codes } = input;
+    let mut sum = 0;
+    for code in codes {
+        sum += code_complexity(code, 25);
+    }
+    Ok(Answer::Num(sum))
 }
 
 // Quickly obtain answers by running
