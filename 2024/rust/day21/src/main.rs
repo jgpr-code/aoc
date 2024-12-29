@@ -7,8 +7,8 @@ use common::{
     Answer,
 };
 use std::{
-    collections::{HashMap, HashSet},
-    io,
+    collections::{HashMap, HashSet, VecDeque},
+    io, slice,
     time::Instant,
 };
 
@@ -42,6 +42,7 @@ fn parse_input(input: &str) -> Result<Input> {
     Ok(Input { codes })
 }
 
+#[derive(PartialEq, Eq)]
 enum KeypadType {
     Numeric,
     Directional,
@@ -50,6 +51,7 @@ struct Keypad {
     keys: HashMap<char, Point>,
     keypad_type: KeypadType,
     cache: HashMap<(char, String), String>,
+    cache2: HashMap<(String, usize), i128>,
 }
 impl Keypad {
     fn shortest_word_sequence(&mut self, start: char, word: &str) -> String {
@@ -66,6 +68,29 @@ impl Keypad {
         self.cache
             .insert((start, word.to_string()), sequence.clone());
         sequence
+    }
+    fn len_shortest_word_sequence(&mut self, word: &str, depth: usize) -> i128 {
+        assert!(self.keypad_type == KeypadType::Directional);
+        // e.g.
+        // d1 start = A, word = >^A => move(A>) A + move(>^) A + move(^A) A,
+        // start is always 'A' because at previous depth we must push A to enter the char after a move sequence
+        if let Some(len) = self.cache2.get(&(String::from(word), depth)) {
+            return *len;
+        }
+        let mut word_vec = vec!['A'];
+        word_vec.extend(word.chars());
+        let mut len = 0i128;
+        for w in word_vec.windows(2) {
+            let mut next_word = self.shortest_move_sequence(w[0], w[1]);
+            next_word.push('A');
+            if depth == 0 {
+                len += next_word.len() as i128;
+            } else {
+                len += self.len_shortest_word_sequence(&next_word, depth - 1);
+            }
+        }
+        self.cache2.insert((String::from(word), depth), len);
+        len
     }
     fn shortest_move_sequence(&self, from: char, to: char) -> String {
         let from_position = self.keys[&from];
@@ -144,6 +169,7 @@ impl Keypad {
             keys,
             keypad_type,
             cache: HashMap::new(),
+            cache2: HashMap::new(),
         }
     }
     //     +---+---+
@@ -162,6 +188,7 @@ impl Keypad {
             keys,
             keypad_type,
             cache: HashMap::new(),
+            cache2: HashMap::new(),
         }
     }
 }
@@ -191,6 +218,14 @@ fn code_complexity(code: &str, robots: usize) -> i128 {
     minimal_length as i128 * code_value(code)
 }
 
+fn dfs_code_complexity(code: &str, robots: usize) -> i128 {
+    let mut numeric_pad = Keypad::new_numeric();
+    let mut directional_pad = Keypad::new_directional();
+    let typed_on_numeric_pad = numeric_pad.shortest_word_sequence('A', code);
+    let len = directional_pad.len_shortest_word_sequence(&typed_on_numeric_pad, robots - 1);
+    len * code_value(code)
+}
+
 fn solve_one(input: &Input) -> Result<Answer> {
     let Input { codes } = input;
     let mut sum = 0;
@@ -204,7 +239,7 @@ fn solve_two(input: &Input) -> Result<Answer> {
     let Input { codes } = input;
     let mut sum = 0;
     for code in codes {
-        sum += code_complexity(code, 25);
+        sum += dfs_code_complexity(code, 25);
     }
     Ok(Answer::Num(sum))
 }
