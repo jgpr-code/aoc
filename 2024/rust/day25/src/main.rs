@@ -1,7 +1,7 @@
 #![feature(test)]
 extern crate test;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use common::Answer;
 use std::io;
 
@@ -22,22 +22,85 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
+struct Key([u8; 5]);
+struct Lock([u8; 5]);
+
+enum Parsed {
+    Key(Key),
+    Lock(Lock),
+    Garbage(String),
+}
+
+fn parse_block(block: &str) -> Result<Parsed> {
+    let lines: Vec<&str> = block.lines().collect();
+    if lines.len() != 7 {
+        return Ok(Parsed::Garbage(String::from("not enough lines")));
+    }
+    return match count_hashes(&lines) {
+        Err(err) => Ok(Parsed::Garbage(err.to_string())),
+        Ok(counts) => {
+            if lines[0] == "#####" {
+                Ok(Parsed::Lock(Lock(counts)))
+            } else if lines[6] == "#####" {
+                Ok(Parsed::Key(Key(counts)))
+            } else {
+                Ok(Parsed::Garbage(String::from("neither key nor lock")))
+            }
+        }
+    };
+}
+
+fn count_hashes(lines: &[&str]) -> Result<[u8; 5]> {
+    let mut counts = [0, 0, 0, 0, 0];
+    for line in lines.iter() {
+        for (i, c) in line.chars().enumerate() {
+            if i > 4 {
+                return Err(anyhow!("line is too long"));
+            }
+            if c == '#' {
+                counts[i] += 1;
+            }
+        }
+    }
+    Ok(counts)
+}
+
+impl Lock {
+    fn key_fits(&self, key: &Key) -> bool {
+        for i in 0..5 {
+            if key.0[i] + self.0[i] > 7 {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 struct Input {
-    nums: Vec<i128>,
+    keys: Vec<Key>,
+    locks: Vec<Lock>,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
-    // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
-        .lines()
-        .map(|l| i128::from_str_radix(l, 10))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    let mut keys = Vec::new();
+    let mut locks = Vec::new();
+    for block in input.trim().split("\n\n") {
+        match parse_block(block)? {
+            Parsed::Garbage(err) => Err(anyhow!(err))?,
+            Parsed::Key(key) => keys.push(key),
+            Parsed::Lock(lock) => locks.push(lock),
+        }
+    }
+    Ok(Input { keys, locks })
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input { keys, locks } = input;
+    let answer: usize = locks
+        .iter()
+        .map(|lock| keys.iter().filter(|key| lock.key_fits(key)).count())
+        .sum();
+    Ok(Answer::Num(answer as i128))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -61,12 +124,12 @@ mod day25_tests {
     #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(3));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(2854));
         Ok(())
     }
     #[bench]
