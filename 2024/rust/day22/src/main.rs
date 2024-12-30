@@ -23,21 +23,46 @@ pub fn part_two(input: &str) -> Result<Answer> {
 }
 
 struct Input {
-    nums: Vec<i128>,
+    secret_nums: Vec<i128>,
 }
 
 fn parse_input(input: &str) -> Result<Input> {
     // example to collect Vec<Result<T, E>> to Result<Vec<T>, E>
-    let nums: Vec<i128> = input
+    let secret_nums: Vec<i128> = input
+        .trim()
         .lines()
         .map(|l| i128::from_str_radix(l, 10))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(Input { nums })
+    Ok(Input { secret_nums })
+}
+fn mix_prune(num: &mut i128, mix: i128) {
+    const PRUNE: i128 = 16777216;
+    *num ^= mix;
+    *num %= PRUNE;
+}
+fn next_secret(secret: i128) -> i128 {
+    let mut next_secret = secret;
+    let mul64 = next_secret << 6;
+    mix_prune(&mut next_secret, mul64);
+    let div32 = next_secret >> 5;
+    mix_prune(&mut next_secret, div32);
+    let mul2024 = next_secret << 11;
+    mix_prune(&mut next_secret, mul2024);
+    next_secret
+}
+
+fn nth_secret(n: usize, secret: &i128) -> i128 {
+    let mut nth_secret = *secret;
+    for _i in 0..n {
+        nth_secret = next_secret(nth_secret);
+    }
+    nth_secret
 }
 
 fn solve_one(input: &Input) -> Result<Answer> {
-    let Input { nums } = input;
-    Ok(Answer::Num(nums.iter().sum()))
+    let Input { secret_nums } = input;
+    let answer = secret_nums.iter().map(|s| nth_secret(2000, s)).sum();
+    Ok(Answer::Num(answer))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
@@ -59,14 +84,29 @@ mod day22_tests {
     static INPUT: LazyLock<String> = local_file!("input");
 
     #[test]
+    fn test_next_secret() {
+        let mut secret = 123;
+        let mut actual = Vec::new();
+        for _i in 0..10 {
+            secret = next_secret(secret);
+            actual.push(secret);
+        }
+        let expected = vec![
+            15887950, 16495136, 527345, 704524, 1553684, 12683156, 11100544, 12249484, 7753432,
+            5908254,
+        ];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn test_one() -> Result<()> {
         let answer = super::part_one(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(37327623));
         Ok(())
     }
     fn part_one_impl() -> Result<()> {
         let answer = super::part_one(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(16299144133));
         Ok(())
     }
     #[bench]
