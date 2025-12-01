@@ -35,3 +35,7 @@ e.g. for running day 25:
 - Python
 - Typescript
 - Clojure
+
+### Rust Guide
+
+TODO describe what to do to setup Rust per year, because obviously I don't remember...
