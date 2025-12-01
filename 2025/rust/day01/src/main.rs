@@ -24,6 +24,7 @@ pub fn part_two(input: &str) -> Result<Answer> {
     solve_two(&input)
 }
 
+#[derive(Debug)]
 enum Rotation {
     Left(u128),
     Right(u128),
@@ -76,7 +77,7 @@ fn solve_one(input: &Input) -> Result<Answer> {
             }
             Rotation::Right(amount) => {
                 let amount = amount % dial_size;
-                (dial_position + amount as i128) % 100
+                (dial_position + amount as i128) % dial_size as i128
             }
         };
         if dial_position == 0 {
@@ -87,8 +88,46 @@ fn solve_one(input: &Input) -> Result<Answer> {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let dial_size = 100;
+    let Input { rotations } = input;
+    let mut zero_counter = 0;
+    let mut dial_position = 50;
+    for rotation in rotations.iter() {
+        dial_position = match rotation {
+            Rotation::Left(amount) => {
+                zero_counter += amount / dial_size;
+                let amount = amount % dial_size;
+                let mut new_dial_position = dial_position - amount as i128;
+                while new_dial_position < 0 {
+                    new_dial_position += dial_size as i128;
+                    if dial_position != 0 {
+                        zero_counter += 1;
+                    }
+                }
+                new_dial_position
+            }
+            Rotation::Right(amount) => {
+                zero_counter += amount / dial_size;
+                let amount = amount % dial_size;
+                let mut new_dial_position = dial_position + amount as i128;
+                while new_dial_position >= dial_size as i128 {
+                    new_dial_position -= dial_size as i128;
+                    if new_dial_position != 0 {
+                        zero_counter += 1;
+                    }
+                }
+                new_dial_position
+            }
+        };
+        if dial_position == 0 {
+            zero_counter += 1;
+        }
+        // println!(
+        //     "after {:?} dial_position: {}, zero_counter: {}",
+        //     rotation, dial_position, zero_counter
+        // );
+    }
+    Ok(Answer::Num(zero_counter as i128))
 }
 
 // Quickly obtain answers by running
@@ -122,12 +161,12 @@ mod day01_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(6));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(5657));
         Ok(())
     }
     #[bench]
