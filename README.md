@@ -9,7 +9,8 @@ used, but must not require any dependencies from outside.
 
 ### Rust
 
-In Rust the best setup is to use a workspace, with one or more shared library crates and binary crates for each individual day.
+In Rust the best setup is to use a workspace, with one or more shared library crates and
+binary crates for each individual day.
 
 ## Minimal Requirements for projects
 
@@ -36,6 +37,30 @@ e.g. for running day 25:
 - Typescript
 - Clojure
 
-### Rust Guide
+## Setup aoc-cli
 
-TODO describe what to do to setup Rust per year, because obviously I don't remember...
+### Update Session Cookie
+
+1. login to aoc with github on firefox
+1. right-click -> inspect
+1. go to storage tab -> cookies
+1. there it is
+1. copy the value and put it under `C:\Users\<user>\.adventofcode.session`
+
+### How to use aoc-cli
+
+#### For the current day
+
+`aoc d -Io`
+
+#### For any specific day
+
+TODO
+
+## Rust Guide
+
+### cargo-generate
+
+I have this nice other github project `cargo-aoc-template` that can be used with cargo generate.
+
+TODO describe in more detail
