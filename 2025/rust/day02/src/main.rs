@@ -55,14 +55,11 @@ fn parse_range(range: &str) -> Result<(i128, i128)> {
 fn solve_one(input: &Input) -> Result<Answer> {
     let Input { ranges } = input;
     Ok(Answer::Num(
-        ranges.iter().map(|range| sum_invalid_ids(*range)).sum(),
+        ranges
+            .iter()
+            .map(|range| sum_invalid_ids(*range, is_repeated_twice))
+            .sum(),
     ))
-}
-
-fn sum_invalid_ids(range: (i128, i128)) -> i128 {
-    (range.0..=range.1)
-        .filter(|id| is_repeated_twice(*id))
-        .sum()
 }
 
 fn is_repeated_twice(number: i128) -> bool {
@@ -77,8 +74,43 @@ fn is_repeated_twice(number: i128) -> bool {
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { ranges } = input;
+    Ok(Answer::Num(
+        ranges
+            .iter()
+            .map(|range| sum_invalid_ids(*range, is_repeated_twice_or_more))
+            .sum(),
+    ))
+}
+
+fn is_repeated_twice_or_more(number: i128) -> bool {
+    let digit_count = number.ilog10() + 1;
+    let max_digit = digit_count / 2;
+    for digit in 1..=max_digit {
+        if digit_count % digit != 0 {
+            continue;
+        }
+        let divisor = 10i128.pow(digit);
+        let mut remaining_number = number;
+        let mut parts: Vec<i128> = vec![];
+        while remaining_number > 0 {
+            parts.push(remaining_number % divisor);
+            remaining_number /= divisor;
+        }
+        if parts
+            .first()
+            .map_or(true, |first| parts.iter().all(|x| x == first))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn sum_invalid_ids(range: (i128, i128), invalid_predicate: fn(i128) -> bool) -> i128 {
+    (range.0..=range.1)
+        .filter(|id| invalid_predicate(*id))
+        .sum()
 }
 
 // Quickly obtain answers by running
@@ -93,6 +125,43 @@ mod day02_tests {
 
     static TEST: LazyLock<String> = local_file!("test");
     static INPUT: LazyLock<String> = local_file!("input");
+
+    #[test]
+    fn is_repeated_twice_or_more_single() {
+        assert_eq!(is_repeated_twice_or_more(1), false);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_pow10() {
+        assert_eq!(is_repeated_twice_or_more(10000), false);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_1() {
+        assert_eq!(is_repeated_twice_or_more(111), true);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_2() {
+        assert_eq!(is_repeated_twice_or_more(121212), true);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_2_false() {
+        assert_eq!(is_repeated_twice_or_more(1232323), false);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_2_false01() {
+        assert_eq!(is_repeated_twice_or_more(1010101), false);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_3() {
+        assert_eq!(is_repeated_twice_or_more(123123), true);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_3_false011() {
+        assert_eq!(is_repeated_twice_or_more(11011011011), false);
+    }
+    #[test]
+    fn is_repeated_twice_or_more_4() {
+        assert_eq!(is_repeated_twice_or_more(123412341234), true);
+    }
 
     #[test]
     fn test_one() -> Result<()> {
@@ -112,12 +181,12 @@ mod day02_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(4174379265));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(55647141923));
         Ok(())
     }
     #[bench]
