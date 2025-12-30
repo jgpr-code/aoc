@@ -144,12 +144,18 @@ mod day03_tests {
     static INPUT: LazyLock<String> = local_file!("input");
 
     mod battery_bank {
-        mod max_joltage {
+        mod max_joltage_n {
             use crate::BatteryBank;
             #[test]
-            fn prioritize_high_digit() {
+            fn prioritizes_high_digit() {
                 let bank = BatteryBank::try_from("8291").unwrap();
                 assert_eq!(bank.max_joltage_n(2).ok(), Some(91));
+            }
+            #[test]
+            #[should_panic]
+            fn more_batteries_than_present_requested() {
+                let bank = BatteryBank::try_from("8291").unwrap();
+                bank.max_joltage_n(42).unwrap();
             }
         }
     }
