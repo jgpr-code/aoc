@@ -60,7 +60,7 @@ impl TryFrom<&str> for BatteryBank {
 impl BatteryBank {
     // NOTE to myself: doctests don't work with binary crates (`cargo test --doc` expects library crate)
 
-    /// Computes the maximum joltage using two batteries from the bank.
+    /// Computes the maximum joltage using `n` batteries from the bank.
     ///
     /// Joltages are obtained by concatenating the battery digits
     /// and are always read from left to right.
@@ -69,28 +69,35 @@ impl BatteryBank {
     ///
     /// ```
     /// let bank = BatteryBank::try_from("969594").unwrap();
-    /// assert_eq!(bank.max_joltage(), 96);
+    /// assert_eq!(bank.max_joltage_n(3).ok(), Some(999));
     /// ```
-    fn max_joltage(&self) -> i128 {
+    fn max_joltage_n(&self, n: usize) -> Result<i128> {
         let batteries = &self.0;
-        let mut front: Option<(usize, u8)> = None;
-        for i in 0..batteries.len() - 1 {
-            let voltage = batteries[i];
-            if front.is_none_or(|(_, v)| v < voltage) {
-                front = Some((i, voltage));
+        let n_batteries = batteries.len();
+        if n > n_batteries {
+            return Err(anyhow!(
+                "requested {n} batteries, but only {n_batteries} present"
+            ));
+        }
+        let mut used_batteries: Vec<Option<(usize, u8)>> = vec![None; n];
+        for use_idx in 0..used_batteries.len() {
+            let start = if use_idx == 0 {
+                0
+            } else {
+                let last_battery_idx = used_batteries[use_idx - 1].unwrap().0;
+                last_battery_idx + 1
+            };
+            for next_idx in start..batteries.len() - n + use_idx + 1 {
+                let voltage = batteries[next_idx];
+                if used_batteries[use_idx].is_none_or(|(_, v)| v < voltage) {
+                    used_batteries[use_idx] = Some((next_idx, voltage));
+                }
             }
         }
-        let (front_idx, front_value) = front.expect("front should always be Some( )");
-        let mut back: Option<(usize, u8)> = None;
-        for i in front_idx + 1..batteries.len() {
-            let voltage = batteries[i];
-            if back.is_none_or(|(_, v)| v < voltage) {
-                back = Some((i, voltage))
-            }
-        }
-        let (_, back_value) = back.expect("back should always be Some( )");
-        i128::from_str_radix(&format!("{front_value}{back_value}"), 10)
-            .expect("from_str_radix should always succeed here")
+        Ok(used_batteries.iter().fold(0i128, |acc, b| {
+            let (_, voltage) = b.unwrap();
+            acc * 10 + voltage as i128
+        }))
     }
 }
 
@@ -108,14 +115,19 @@ fn parse_input(input: &str) -> Result<Input> {
 
 fn solve_one(input: &Input) -> Result<Answer> {
     let Input { banks } = input;
-    Ok(Answer::Num(
-        banks.iter().map(|bank| bank.max_joltage()).sum(),
-    ))
+    Ok(Answer::Num(solve(banks, 2)?))
 }
 
 fn solve_two(input: &Input) -> Result<Answer> {
-    let _unused = input;
-    Ok(Answer::Num(0))
+    let Input { banks } = input;
+    Ok(Answer::Num(solve(banks, 12)?))
+}
+
+fn solve(banks: &[BatteryBank], n: usize) -> Result<i128> {
+    banks
+        .iter()
+        .map(|bank| bank.max_joltage_n(n))
+        .sum::<Result<i128>>()
 }
 
 // Quickly obtain answers by running
@@ -137,7 +149,7 @@ mod day03_tests {
             #[test]
             fn prioritize_high_digit() {
                 let bank = BatteryBank::try_from("8291").unwrap();
-                assert_eq!(bank.max_joltage(), 91);
+                assert_eq!(bank.max_joltage_n(2).ok(), Some(91));
             }
         }
     }
@@ -160,12 +172,12 @@ mod day03_tests {
     #[test]
     fn test_two() -> Result<()> {
         let answer = super::part_two(&TEST)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(3121910778619));
         Ok(())
     }
     fn part_two_impl() -> Result<()> {
         let answer = super::part_two(&INPUT)?;
-        assert_eq!(answer, Answer::Num(0));
+        assert_eq!(answer, Answer::Num(169019504359949));
         Ok(())
     }
     #[bench]
