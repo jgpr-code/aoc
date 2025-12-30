@@ -79,25 +79,27 @@ impl BatteryBank {
                 "requested {n} batteries, but only {n_batteries} present"
             ));
         }
-        let mut used_batteries: Vec<Option<(usize, u8)>> = vec![None; n];
-        for use_idx in 0..used_batteries.len() {
-            let start = if use_idx == 0 {
-                0
-            } else {
-                let last_battery_idx = used_batteries[use_idx - 1].unwrap().0;
-                last_battery_idx + 1
-            };
-            for next_idx in start..batteries.len() - n + use_idx + 1 {
-                let voltage = batteries[next_idx];
-                if used_batteries[use_idx].is_none_or(|(_, v)| v < voltage) {
-                    used_batteries[use_idx] = Some((next_idx, voltage));
-                }
-            }
-        }
-        Ok(used_batteries.iter().fold(0i128, |acc, b| {
-            let (_, voltage) = b.unwrap();
-            acc * 10 + voltage as i128
-        }))
+        let (max_voltage, _) = (0..n).fold((0i128, 0usize), |(acc, start), nth_battery| {
+            // n_batteries: just this would mean all batteries
+            // -n+1: because let's say we have n_batteries == 3 and n == 2, then the first battery can't be at index 2,
+            //       because there wouldn't be any space left for the second battery
+            // +use_idx: because we can search farther for each subsequent battery
+            let end = n_batteries - n + nth_battery + 1;
+            let (index, value) = Self::first_max_with_index(batteries, start, end);
+            (acc * 10 + value as i128, index + 1)
+        });
+        Ok(max_voltage)
+    }
+
+    fn first_max_with_index(batteries: &[u8], start: usize, end: usize) -> (usize, u8) {
+        batteries[start..end]
+            .iter()
+            .enumerate()
+            .map(|(idx, &v)| (idx + start, v))
+            .max_by(|(_, last_max), (_, value)| {
+                last_max.cmp(value).then(std::cmp::Ordering::Greater)
+            })
+            .unwrap()
     }
 }
 
@@ -158,6 +160,18 @@ mod day03_tests {
                 bank.max_joltage_n(42).unwrap();
             }
         }
+    }
+
+    #[test]
+    fn test_max_by_behavior() {
+        let vec = vec![5; 3];
+        let max = vec
+            .iter()
+            .enumerate()
+            // .max() returns last 5, but we want first 5
+            .max_by(|(_, v1), (_, v2)| v1.cmp(v2).then(std::cmp::Ordering::Greater))
+            .unwrap();
+        assert_eq!(max, (0usize, &5i32));
     }
 
     #[test]
