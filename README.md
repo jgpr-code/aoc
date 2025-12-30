@@ -55,7 +55,11 @@ e.g. for running day 25:
 
 #### For any specific day
 
-TODO
+`aoc d -Iod <day>`
+
+#### Submitting
+
+`aoc s -d <day> <part> <answer>`
 
 ## Rust Guide
 
